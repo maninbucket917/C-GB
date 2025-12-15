@@ -20,10 +20,6 @@ typedef struct Memory {
     uint8_t ie;                         // FFFF
 
     uint16_t div_internal;
-    uint32_t timer_counter;
-    uint8_t  tima_reload_delay;
-    uint8_t tima_overflowed;
-    uint8_t pending;
 } Memory;
 
 // ROM loading
@@ -55,5 +51,8 @@ uint16_t pop16(CPU * cpu, Memory * mem);
 // Timer update
 
 void mem_timer_update(Memory *mem, int cycles);
+static inline void tick(Memory *mem) {
+    mem_timer_update(mem, 1);
+}
 
 #endif

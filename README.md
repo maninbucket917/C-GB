@@ -19,6 +19,12 @@ To run C-GB with a specific ROM, run:
 
 ## Version History
 
+### V 0.11
+
+- Fixed interrupt cancelling behaviour to pass mooneye's ie_push test
+- Fixed IF read/write behaviour to pass mooneye's if_ie_registers test
+- The following mooneye tests were also performed and passed: mem_oam, reg_f, daa, basic, boot_regs-dmgABC, 
+
 ### V 0.1
 
 Initial version

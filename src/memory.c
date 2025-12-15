@@ -130,7 +130,12 @@ uint8_t mem_read8(Memory * mem, uint16_t addr) {
 
     // FF00–FF7F: I/O registers
     else if (addr < 0xFF80) {
+
+        // Input register, returns 0xF for now - TODO: implement input
         if (addr == 0xFF00) return 0xF;
+
+        // Force bits 5-7 of IF to high
+        if (addr == 0xFF0F) return 0xE0 | mem -> io[0x0F];
         return mem -> io[addr - 0xFF00];
     }
 
@@ -203,6 +208,10 @@ void mem_write8(Memory * mem, uint16_t addr, uint8_t value) {
             mem->io[0x04] = 0;
         }
 
+        // Prevent writes to IF from clearing bits 5-7
+        if(addr == 0xFF0F) {
+            mem -> io[0x0F] = 0xE0 | value;
+        }
 
         // Block writes to LY
         if(addr == 0xFF44) return;
@@ -268,8 +277,7 @@ uint16_t pop16(CPU * cpu, Memory * mem) {
 }
 
 // Update timer registers
-void mem_timer_update(Memory *mem, int cycles)
-{
+void mem_timer_update(Memory *mem, int cycles){
 
     while (cycles--) {
 

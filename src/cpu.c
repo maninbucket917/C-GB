@@ -193,12 +193,29 @@ int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
             cpu -> ime = 0;
             cpu -> halted = 0;
 
-            // Clear the corresponding IF bit
-            mem_write8(mem, 0xFF0F, IF & ~(1 << i));
+            // Push high byte of PC
+            push8(cpu, mem, cpu -> pc >> 8);
 
-            // Push PC onto stack
-            cpu -> sp -= 2;
-            mem_write16(mem, cpu -> sp, cpu -> pc);
+            // Check for early cancellation
+            IE = mem_read8(mem, 0xFFFF);
+            IF = mem_read8(mem, 0xFF0F);
+
+            uint8_t cancelled = !(IE & IF & (1 << i));
+
+            // Push low byte of PC
+            push8(cpu, mem, cpu -> pc & 0xFF);
+
+            // Interrupt is cancelled if IE or IF change during the push
+            if (cancelled) {
+
+                // Check if any other interrupts are available to process
+                uint8_t remaining = (IE & IF) & ~(1 << i);
+                if (!remaining) {
+                    cpu -> pc = 0x0000;
+                    return 20;
+                }
+                continue;
+            }
 
             // Jump to interrupt vector
             switch (i) {
@@ -208,6 +225,9 @@ int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
                 case 3: cpu -> pc = 0x58; break; // Serial
                 case 4: cpu -> pc = 0x60; break; // Joypad
             }
+
+            // Clear the corresponding IF bit
+            mem_write8(mem, 0xFF0F, IF & ~(1 << i));
 
             // Add cycles for interrupt handling
             return 20;
@@ -234,6 +254,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
         if (!pending) {
 
             // No interrupt, stay halted 
+            mem_timer_update(mem,4);
             return 4;
         }
 
@@ -284,8 +305,6 @@ int cpu_step(CPU * cpu, Memory * mem) {
         cpu -> ime_delay = 0;
         cpu -> ime = 1;
     }
-
-    mem_timer_update(mem, instruction_cycles);
 
     cpu -> cycles += instruction_cycles;
     instruction_cycles += cpu_handle_interrupts(cpu, mem);
