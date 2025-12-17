@@ -142,10 +142,8 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
         }
 
         // Compute tile address
-        bool unsigned_tiles = mem_read8(mem, 0xFF40) & 0x10;
         uint16_t tile_addr;
         tile_addr = 0x8000 + (tile_index << 4);
-
 
         // Draw sprite line
         for (int x = 0; x < 8; x++) {
