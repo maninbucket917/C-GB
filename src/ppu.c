@@ -5,6 +5,8 @@
 #include "memory.h"
 #include "config.h"
 
+const uint32_t palettes[NUM_PALETTES][4] = {{PALETTE_0}, {PALETTE_1}};
+
 /*
 ppu_init
 
@@ -18,8 +20,22 @@ void ppu_init(PPU * ppu) {
     ppu -> mode = 2;
 
     ppu -> window = SDL_CreateWindow("C-GB", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * SCREEN_SCALING, 144 * SCREEN_SCALING, SDL_WINDOW_SHOWN);
-    ppu -> renderer = SDL_CreateRenderer(ppu->window, -1, SDL_RENDERER_ACCELERATED);
-    ppu -> texture = SDL_CreateTexture(ppu->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+    ppu -> renderer = SDL_CreateRenderer(ppu -> window, -1, SDL_RENDERER_ACCELERATED);
+    ppu -> texture = SDL_CreateTexture(ppu -> renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+    ppu -> palette_id = DEFAULT_PALETTE;
+}
+
+void ppu_reset(PPU * ppu) {
+    ppu -> dot = 0;
+    ppu -> ly = 0;
+    ppu -> mode = 2;
+    ppu -> palette_id = DEFAULT_PALETTE;
+}
+
+
+static inline uint32_t gb_palette(uint8_t palette_id, uint8_t colour) {
+    return palettes[palette_id][colour & 3];
 }
 
 /*
@@ -27,30 +43,120 @@ ppu_read_tile_pixel
 
 Returns the colour of the pixel specified by [tiledata_unsigned], [tilemap], [x], and [y].
 */
-uint8_t ppu_read_tile_pixel(Memory * mem, int tiledata_unsigned, uint16_t tilemap, uint16_t x, uint16_t y) {
+static inline uint8_t ppu_read_tile_pixel(Memory * mem, int tiledata_unsigned, uint16_t tilemap, uint16_t x, uint16_t y) {
 
     // Get tile row and column
     uint16_t tile_row = y >> 3;
     uint16_t tile_col = x >> 3;
 
     // Get the index in memory of the pixel
-    uint16_t index_addr = tilemap + tile_row * 32 + tile_col;
+    uint16_t index_addr = tilemap + (tile_row << 5) + tile_col;
     uint8_t raw_index = mem_read8(mem, index_addr);
 
     uint16_t tile_addr;
     if (tiledata_unsigned) {
-        tile_addr = 0x8000 + raw_index * 16;
+        tile_addr = 0x8000 + (raw_index << 4);
     } else {
         tile_addr = 0x9000 + ((int8_t)raw_index) * 16;
     }
 
     // Get colour map of pixel by adding both bitplanes
     uint8_t line = y & 7;
-    uint8_t b1 = mem_read8(mem, tile_addr + line * 2);
-    uint8_t b2 = mem_read8(mem, tile_addr + line * 2 + 1);
+    uint8_t b1 = mem_read8(mem, tile_addr + (line << 1));
+    uint8_t b2 = mem_read8(mem, tile_addr + (line << 1) + 1);
 
-    int bit = 7 - (x & 7);
+    uint8_t bit = 7 - (x & 7);
     return ((b2 >> bit) & 1) << 1 | ((b1 >> bit) & 1);
+}
+
+static inline uint8_t ppu_read_sprite_pixel(Memory *mem, uint16_t tile_addr, uint8_t x, uint8_t y, bool xflip, bool yflip) {
+    if (xflip) {x = 7 - x;}
+    if (yflip) {y = 7 - y;}
+
+    uint8_t b1 = mem_read8(mem, tile_addr + (y << 1));
+    uint8_t b2 = mem_read8(mem, tile_addr + (y << 1) + 1);
+
+    uint8_t bit = 7 - x;
+    return ((b2 >> bit) & 1) << 1 | ((b1 >> bit) & 1);
+}
+
+// Update framebuffer with sprite tiles
+void ppu_draw_sprites(PPU * ppu, Memory * mem) {
+
+    uint8_t lcdc = mem_read8(mem, 0xFF40);
+
+    // Check if sprites are enabled
+    if (!(lcdc & 0x02)) return;
+
+    uint8_t ly = ppu -> ly;
+
+    // 8x16 sprite
+    bool tall_sprites = lcdc & 0x04;
+
+    // Max 10 sprites per scanline
+    int drawn = 0;
+
+    // Check each sprite in OAM
+    for (int i = 0; i < 40; i++) {
+
+        // Only draw 10 sprites max
+        if (drawn >= 10) break;
+
+        // Get address of sprite in OAM
+        uint16_t addr = 0xFE00 + (i * 4);
+
+        // Get sprite coordinates, tile location, and attribute byte
+        int sprite_y = mem_read8(mem, addr) - 16;
+        int sprite_x = mem_read8(mem, addr + 1) - 8;
+        uint8_t tile = mem_read8(mem, addr + 2);
+        uint8_t attr = mem_read8(mem, addr + 3);
+
+        int height = tall_sprites ? 16 : 8;
+
+        // Check if sprite intersects with current scanline
+        if (ly < sprite_y || ly >= sprite_y + height) continue;
+        drawn++;
+
+        // Get sprite attributes
+        bool priority = attr & 0x80;
+        bool yflip    = attr & 0x40;
+        bool xflip    = attr & 0x20;
+        bool palette  = attr & 0x10;
+
+        // Get sprite palette
+        uint8_t obj_palette = mem_read8(mem, palette ? 0xFF49 : 0xFF48);
+
+        // Get which line of tile to draw, and apply y flip
+        int line = ly - sprite_y;
+        if (yflip) line = height - 1 - line;
+
+        // Get tile address in VRAM
+        uint16_t tile_addr = 0x8000 + (tile << 4);
+
+        // Draw sprite line
+        for (int x = 0; x < 8; x++) {
+            int pixel_x = sprite_x + x;
+
+            // Don't draw off the edge of the screen
+            if (pixel_x < 0 || pixel_x >= SCREEN_WIDTH) continue;
+
+            // Get mapped colour of sprite pixel
+            uint8_t colour = ppu_read_sprite_pixel(mem, tile_addr, x, line, xflip, yflip);
+
+            // Don't draw transparent pixels
+            if (colour == 0) continue;
+
+            // If priority is set, only draw over bg colour 0
+            if (priority) {
+                uint32_t bg = ppu->framebuffer[ly * SCREEN_WIDTH + pixel_x];
+                if (bg != gb_palette(ppu->palette_id, 0)) continue;
+            }
+
+            // Remap colour to obj_palette and update framebuffer
+            uint8_t mapped = (obj_palette >> (colour << 1)) & 3;
+            ppu -> framebuffer[ly * SCREEN_WIDTH + pixel_x] = gb_palette(ppu -> palette_id, mapped);
+        }
+    }
 }
 
 /*
@@ -58,12 +164,11 @@ ppu_draw_scanline
 
 Draw the scanline at ly to the PPU framebuffer.
 */
-void ppu_draw_scanline(PPU * ppu, Memory * mem)
-{
+void ppu_draw_scanline(PPU * ppu, Memory * mem) {
 
     // Read registers
     uint8_t lcdc = mem_read8(mem, 0xFF40);
-    uint8_t ly   = ppu->ly;
+    uint8_t ly   = ppu -> ly;
     uint8_t scx  = mem_read8(mem, 0xFF43);
     uint8_t scy  = mem_read8(mem, 0xFF42);
     uint8_t wx   = mem_read8(mem, 0xFF4B);
@@ -98,7 +203,7 @@ void ppu_draw_scanline(PPU * ppu, Memory * mem)
         // Check palette
         uint8_t bgp = mem_read8(mem, 0xFF47);
         uint8_t mapped_colour = (bgp >> (bg_colour * 2)) & 0x03;
-        ppu->framebuffer[ly * SCREEN_WIDTH + x] = gb_palette(mapped_colour);
+        ppu -> framebuffer[ly * SCREEN_WIDTH + x] = gb_palette(ppu -> palette_id, mapped_colour);
     }
 }
 
@@ -123,13 +228,13 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
         }
 
         // Each cycle increments dot counter by 1
-        ppu->dot++;
+        ppu -> dot++;
 
-        switch (ppu->mode) {
+        switch (ppu -> mode) {
 
             case 0: // HBlank
 
-                if (ppu->dot >= 456) {
+                if (ppu -> dot >= 456) {
 
                     // Increment LY at end of scanline
                     ppu -> dot = 0;
@@ -138,7 +243,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
 
                     if (ppu -> ly == 144) {
                         // Enter VBlank
-                        ppu->mode = 1;
+                        ppu -> mode = 1;
 
                         // Request VBlank interrupt
                         uint8_t IF = mem_read8(mem, 0xFF0F);
@@ -184,10 +289,11 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
                 break;
 
             case 3: // Drawing
+            
+                // Draw scanline at end of mode 3 and reset to HBlank
                 if (ppu -> dot >= 252) {
-                    
-                    // Draw scanline at end of mode 3 and reset to Hblank
                     ppu_draw_scanline(ppu, mem);
+                    ppu_draw_sprites(ppu, mem);
                     ppu -> mode = 0;
                 }
                 break;
@@ -196,16 +302,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
     }
 }
 
-/*
-gb_palette
-
-Returns the colour to be written into the framebuffer associated with [colour].
-*/
-uint32_t gb_palette(int colour) {
-    switch (colour){
-        case 0x00: return 0xFFFFFFFF;
-        case 0x01: return 0xC0C0C0FF;
-        case 0x02: return 0x606060FF;
-        default:   return 0x000000FF;
-    }
+void ppu_palette_swap(PPU * ppu) {
+    ppu -> palette_id ++;
+    ppu -> palette_id %= NUM_PALETTES;
 }

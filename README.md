@@ -2,6 +2,30 @@
 
 A basic Gameboy emulator project written in C.
 
+***NOTE:***
+Currently, no MBCs are implemented, so only 32KB ROMs will run.
+
+## Controls
+
+The default keyboard bindings are:
+
+|Button|Keybind    |
+|------|-----------|
+|A     |X          |
+|B     |Z          |
+|Select|Right Shift|
+|Start |Return     |
+|D-Pad |Arrow Keys |
+
+Additional function keys:
+
+|Key   |Function    |
+|------|------------|
+|F1    |Reset       |
+|F2    |Palette swap|
+
+The controls and the default palette may be changed in `/include/config.h`.
+
 ## Compiling & Running
 
 ### Linux
@@ -12,18 +36,31 @@ Dependencies:
 - SDL2 development libraries (libsdl2-dev)
 
 To compile the source code, navigate to the root and run:  
-```make```
+`make`
 
 To run C-GB with a specific ROM, run:  
-```./bin/C-GB path/to/rom.gb```
+`./bin/C-GB path/to/rom.gb`.
 
 ## Version History
+
+### V 0.20
+
+- Added sprite rendering
+- Added input
+- Added reset and palette swap hotkeys
+- Added FPS counter
+- Added Controls section to README
+- Improved FPS accuracy (~62 FPS -> ~59.7 FPS)
+- Improved tile rendering performance
+- Fixed timer behaviour to pass blargg CPU test #2
+- Fixed several minor formatting issues
+- Fixed Makefile to update if a header file is changed
 
 ### V 0.11
 
 - Fixed interrupt cancelling behaviour to pass mooneye's ie_push test
 - Fixed IF read/write behaviour to pass mooneye's if_ie_registers test
-- The following mooneye tests were also performed and passed: mem_oam, reg_f, daa, basic, boot_regs-dmgABC, 
+- The following mooneye tests were also performed and passed: mem_oam, reg_f, daa, basic, boot_regs-dmgABC
 
 ### V 0.1
 

@@ -5,7 +5,6 @@
 #include "opcodes.h"
 #include "ppu.h"
 
-
 /*
 cpu_init
 
@@ -33,128 +32,7 @@ void cpu_init(CPU * cpu) {
 
     cpu -> stopped = 0;
 
-    cpu -> cycles = 0;
-}
-
-// Functions for register pairs
-
-// Return the value of register pair af.
-uint16_t get_af(CPU * cpu) {
-    return (cpu -> a << 8) | (cpu -> f & 0xF0);
-}
-
-// Return the value of register pair bc.
-uint16_t get_bc(CPU * cpu) {
-    return (cpu -> b << 8) | cpu -> c;
-}
-
-// Return the value of register pair de.
-uint16_t get_de(CPU * cpu) {
-    return (cpu -> d << 8) | cpu -> e;
-}
-
-// Return the value of register pair hl.
-uint16_t get_hl(CPU * cpu) {
-    return (cpu -> h << 8) | cpu -> l;
-} 
-
-// Set the value of register pair af to [val].
-void set_af(CPU * cpu, uint16_t val) {
-    cpu -> a = (val >> 8) & 0xFF;
-    cpu -> f = val & 0xF0;
-}
-
-// Set the value of register pair bc to [val].
-void set_bc(CPU * cpu, uint16_t val) {
-    cpu -> b = (val >> 8) & 0xFF;
-    cpu -> c = val & 0xFF;
-}
-
-// Set the value of register pair de to [val].
-void set_de(CPU * cpu, uint16_t val) {
-    cpu -> d = (val >> 8) & 0xFF;
-    cpu -> e = val & 0xFF;
-}
-
-// Set the value of register pair hl to [val].
-void set_hl(CPU * cpu, uint16_t val) {
-    cpu -> h = (val >> 8) & 0xFF;
-    cpu -> l = val & 0xFF;
-}
-
-// Return the value of register pair hl and decrement it by 1.
-uint16_t get_hl_minus(CPU * cpu){
-    uint16_t value = get_hl(cpu);
-    set_hl(cpu, value - 1);
-    return value;
-}
-
-// Return the value of register pair hl and increment it by 1.
-uint16_t get_hl_plus(CPU * cpu){
-    uint16_t value = get_hl(cpu);
-    set_hl(cpu, value + 1);
-    return value;
-}
-
-// Set the zero flag to [val].
-void set_zero_flag(CPU * cpu, uint8_t val) {
-    cpu->f = (cpu->f & ~0x80) | ((val ? 1 : 0) << 7);
-    cpu->f &= 0xF0;
-}
-
-// Set the subtract flag to [val].
-void set_subtract_flag(CPU * cpu, uint8_t val) {
-    cpu->f = (cpu->f & ~0x40) | ((val ? 1 : 0) << 6);
-    cpu->f &= 0xF0;
-}
-
-// Set the half carry flag to [val].
-void set_half_carry_flag(CPU * cpu, uint8_t val) {
-    cpu->f = (cpu->f & ~0x20) | ((val ? 1 : 0) << 5);
-    cpu->f &= 0xF0;
-}
-
-// Set the carry flag to [val].
-void set_carry_flag(CPU * cpu, uint8_t val) {
-    cpu->f = (cpu->f & ~0x10) | ((val ? 1 : 0) << 4);
-    cpu->f &= 0xF0;
-}
-
-// Return the value of the zero flag.
-uint8_t get_zero_flag(CPU * cpu) {
-    return (cpu -> f & 0x80) != 0;
-}
-
-// Return the value of the subtract flag.
-uint8_t get_subtract_flag(CPU * cpu) {
-    return (cpu -> f & 0x40) != 0;
-}
-
-// Return the value of the half carry flag.
-uint8_t get_half_carry_flag(CPU * cpu) {
-    return (cpu -> f & 0x20) != 0;
-}
-
-// Return the value of the carry flag.
-uint8_t get_carry_flag(CPU * cpu) {
-    return (cpu -> f & 0x10) != 0;
-}
-
-// Return the next opcode to execute and increments the PC by 1.
-uint8_t get_opcode(CPU * cpu, Memory * mem) {
-    return mem_read8(mem, cpu -> pc++);
-}
-
-// Return the immediate 8-bit operand and increment the PC by 1.
-uint8_t get_imm8(CPU * cpu, Memory * mem) {
-    return mem_read8(mem, cpu -> pc++);
-}
-
-// Return the immediate 16-bit operand and increment the PC by 2.
-uint16_t get_imm16(CPU * cpu, Memory * mem) {
-    uint8_t low = mem_read8(mem, cpu -> pc++);
-    uint8_t high = mem_read8(mem, cpu -> pc++);
-    return (high << 8) | low;
+    cpu -> frame_cycles = 0;
 }
 
 /*
@@ -162,7 +40,7 @@ cpu_handle_interrupts
 
 Check for and begin servicing interrupts if interrupt flags are set.
 */
-int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
+void cpu_handle_interrupts(CPU * cpu, Memory * mem) {
 
     uint8_t IE = mem_read8(mem, 0xFFFF); // Interrupt Enable
     uint8_t IF = mem_read8(mem, 0xFF0F); // Interrupt Flag
@@ -170,18 +48,11 @@ int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
 
     // No cycles taken if no interrupts are pending
     if(!pending) {
-        return 0;
-    }
-
-    // Check for HALT bug
-    if(cpu -> halted && !cpu -> ime) {
-        cpu -> halted = 0;
-        cpu -> halt_bug = 1;
-        return 0;
+        return;
     }
 
     if(!cpu -> ime) {
-        return 0;
+        return;
     }
 
     // Find highest priority interrupt
@@ -195,6 +66,7 @@ int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
 
             // Push high byte of PC
             push8(cpu, mem, cpu -> pc >> 8);
+            tick(cpu, 4);
 
             // Check for early cancellation
             IE = mem_read8(mem, 0xFFFF);
@@ -204,6 +76,7 @@ int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
 
             // Push low byte of PC
             push8(cpu, mem, cpu -> pc & 0xFF);
+            tick(cpu, 4);
 
             // Interrupt is cancelled if IE or IF change during the push
             if (cancelled) {
@@ -212,7 +85,8 @@ int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
                 uint8_t remaining = (IE & IF) & ~(1 << i);
                 if (!remaining) {
                     cpu -> pc = 0x0000;
-                    return 20;
+                    tick(cpu, 12);
+                    return;
                 }
                 continue;
             }
@@ -230,11 +104,12 @@ int cpu_handle_interrupts(CPU * cpu, Memory * mem) {
             mem_write8(mem, 0xFF0F, IF & ~(1 << i));
 
             // Add cycles for interrupt handling
-            return 20;
+            tick(cpu, 12);
+            return;
         }
     }
 
-    return 0;
+    return;
 }
 
 
@@ -254,7 +129,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
         if (!pending) {
 
             // No interrupt, stay halted 
-            mem_timer_update(mem,4);
+            tick(cpu, 4);
             return 4;
         }
 
@@ -265,7 +140,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
 
     // Fetch opcode
     int instruction_cycles = 0;
-    uint16_t fetch_pc = cpu->pc;
+    uint16_t fetch_pc = cpu -> pc;
     uint8_t op = mem_read8(mem, fetch_pc);
 
     
@@ -280,7 +155,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
     // Check for CB prefixed unstructions
     if (op == 0xCB) {
         uint8_t cb = mem_read8(mem, cpu -> pc);
-        cpu->pc++;
+        cpu -> pc++;
 
         handler = cb_opcode_table[cb];
         if (!handler) {
@@ -306,8 +181,9 @@ int cpu_step(CPU * cpu, Memory * mem) {
         cpu -> ime = 1;
     }
 
-    cpu -> cycles += instruction_cycles;
-    instruction_cycles += cpu_handle_interrupts(cpu, mem);
+    tick(cpu, instruction_cycles);
+
+    cpu_handle_interrupts(cpu, mem);
 
     return instruction_cycles;
 }
@@ -315,7 +191,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
 /*
 Used for debugging
 */
-void print_cpu_state(CPU *cpu, Memory * mem, FILE * file) {
+void print_cpu_state(CPU * cpu, Memory * mem, FILE * file) {
     fprintf(file, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
-    cpu->a, cpu->f, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->pc, mem_read8(mem, cpu->pc), mem_read8(mem, cpu->pc+1),mem_read8(mem, cpu->pc+2),mem_read8(mem, cpu->pc+3));
+    cpu -> a, cpu -> f, cpu -> b, cpu -> c, cpu -> d, cpu -> e, cpu -> h, cpu -> l, cpu -> sp, cpu -> pc, mem_read8(mem, cpu -> pc), mem_read8(mem, cpu -> pc+1),mem_read8(mem, cpu -> pc+2),mem_read8(mem, cpu -> pc+3));
 }

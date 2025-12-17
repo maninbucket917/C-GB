@@ -107,9 +107,9 @@ uint8_t op_call(CPU * cpu, Memory * mem, uint8_t condition)
         return 12;
     }
 
-    push16(cpu, mem, cpu->pc);
+    push16(cpu, mem, cpu -> pc);
 
-    cpu->pc = addr;
+    cpu -> pc = addr;
 
     return 24;
 }
@@ -126,7 +126,7 @@ uint8_t op_ret(CPU * cpu, Memory * mem, uint8_t condition)
         return 8;
     }
 
-    cpu->pc = pop16(cpu, mem);
+    cpu -> pc = pop16(cpu, mem);
 
     return 20;
 }
@@ -256,7 +256,7 @@ void op_adc(CPU * cpu, uint8_t src)
 
     cpu -> a += src + carry;
 
-    set_zero_flag(cpu, cpu->a == 0);
+    set_zero_flag(cpu, cpu -> a == 0);
     set_subtract_flag(cpu, 0);
     set_half_carry_flag(cpu, ((a & 0x0F) + (src & 0x0F) + carry) > 0x0F);
     set_carry_flag(cpu, a + src + carry > 0xFF);
@@ -495,7 +495,7 @@ uint8_t op_38(CPU * cpu, Memory * mem) {return op_jr(cpu, get_imm8(cpu, mem), ge
 uint8_t op_39(CPU * cpu, Memory * mem) {(void)mem; op_add_16(cpu, cpu -> sp); return 8;}
 
 // LD A, (HL-)
-uint8_t op_3A(CPU *cpu, Memory *mem) {uint16_t addr = get_hl(cpu); cpu -> a = mem_read8(mem, addr); set_hl(cpu, addr - 1); return 8;}
+uint8_t op_3A(CPU * cpu, Memory * mem) {uint16_t addr = get_hl(cpu); cpu -> a = mem_read8(mem, addr); set_hl(cpu, addr - 1); return 8;}
 
 // DEC SP
 uint8_t op_3B(CPU * cpu, Memory * mem) {(void)mem; cpu -> sp--; return 8;}
@@ -987,7 +987,7 @@ uint8_t op_E0(CPU * cpu, Memory * mem) {mem_write8(mem, 0xFF00 | get_imm8(cpu, m
 uint8_t op_E1(CPU * cpu, Memory * mem) {set_hl(cpu, pop16(cpu, mem)); return 12;}
 
 // LD (C), A
-uint8_t op_E2(CPU * cpu, Memory * mem) {mem_write8(mem, 0xFF00 | cpu->c, cpu->a); return 8;}
+uint8_t op_E2(CPU * cpu, Memory * mem) {mem_write8(mem, 0xFF00 | cpu -> c, cpu -> a); return 8;}
 
 // PUSH HL
 uint8_t op_E5(CPU * cpu, Memory * mem) {push16(cpu, mem, get_hl(cpu)); return 16;}
@@ -999,9 +999,9 @@ uint8_t op_E6(CPU * cpu, Memory * mem) {op_and(cpu, get_imm8(cpu, mem)); return 
 uint8_t op_E7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x20; return 4;}
 
 // ADD SP, s8
-uint8_t op_E8(CPU *cpu, Memory *mem) {
+uint8_t op_E8(CPU * cpu, Memory * mem) {
     int8_t src = (int8_t)get_imm8(cpu, mem);
-    uint16_t sp = cpu->sp;
+    uint16_t sp = cpu -> sp;
 
     uint16_t result = sp + src;
     cpu -> sp = result;
@@ -1053,7 +1053,7 @@ uint8_t op_F7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc =
 // LD HL, SP+r8
 uint8_t op_F8(CPU * cpu, Memory * mem) {
     int8_t offset = (int8_t)get_imm8(cpu, mem);
-    uint16_t sp = cpu->sp;
+    uint16_t sp = cpu -> sp;
     uint16_t result = sp + offset;
 
     set_hl(cpu, result);
@@ -1095,7 +1095,7 @@ cb_rlc
 Rotate [src] to the left. Bit 7 of [src] is copied to CY and bit 0 of [src].
 Flags: Z 0 0 src.7
 */
-uint8_t cb_rlc(CPU *cpu, uint8_t src) {
+uint8_t cb_rlc(CPU * cpu, uint8_t src) {
     uint8_t result = (src << 1) | (src >> 7);
     
     set_zero_flag(cpu, result == 0);
@@ -1111,7 +1111,7 @@ cb_rrc
 Rotate [src] to the right. Bit 0 of [src] is copied to CY and bit 7 of [src].
 Flags: Z 0 0 src.0
 */
-uint8_t cb_rrc(CPU *cpu, uint8_t src) {
+uint8_t cb_rrc(CPU * cpu, uint8_t src) {
     uint8_t result = (src << 7) | (src >> 1);
     
     set_zero_flag(cpu, result == 0);
@@ -1127,7 +1127,7 @@ cb_rl
 Rotate [src] to the left. CY is copied to bit 0 of [src], and bit 7 of [src] is copied to CY.
 Flags: Z 0 0 src.7
 */
-void cb_rl(CPU *cpu, uint8_t * src)
+void cb_rl(CPU * cpu, uint8_t * src)
 {
     uint8_t old_carry = get_carry_flag(cpu);
     uint8_t new_carry = (*src >> 7) & 0x01;

@@ -39,9 +39,10 @@ void mem_init(Memory * mem) {
     // Clear memory to 0
     memset(mem, 0, sizeof(Memory));
 
-    mem -> io[0x00] = 0x0F;
+    mem -> io[0x00] = 0xCF;
 
     // Timer registers
+    mem -> io[0x04] = 0x00; // DIV
     mem -> io[0x05] = 0x00; // TIMA
     mem -> io[0x06] = 0x00; // TMA
     mem -> io[0x07] = 0x00; // TAC
@@ -75,169 +76,6 @@ void mem_init(Memory * mem) {
 
 }
 
-// Read an 8-bit value from memory at [addr].
-uint8_t mem_read8(Memory * mem, uint16_t addr) {
-
-    // 0000–3FFF: ROM bank 0
-    if (addr < 0x4000) {
-        return mem -> rom0[addr];
-    }
-
-    // 4000–7FFF: ROM bank N
-    else if (addr < 0x8000) {
-        return mem -> romN[addr - 0x4000];
-    }
-
-    // 8000–9FFF: VRAM
-    else if (addr < 0xA000) {
-        return mem -> vram[addr - 0x8000];
-    }
-
-    // A000–BFFF: External RAM
-    else if (addr < 0xC000) {
-        return mem -> eram[addr - 0xA000];
-    }
-
-    // C000–CFFF: WRAM bank 0
-    else if (addr < 0xD000) {
-        return mem -> wram0[addr - 0xC000];
-    }
-
-    // D000–DFFF: WRAM bank 1
-    else if (addr < 0xE000) {
-        return mem -> wram1[addr - 0xD000];
-    }
-
-    // E000–EFFF: Echo of WRAM0
-    else if (addr < 0xF000) {
-        return mem -> wram0[addr - 0xE000];
-    }
-
-    // F000–FDFF: Echo of WRAM1
-    else if (addr < 0xFE00) {
-        return mem -> wram1[addr - 0xF000];
-    }
-
-    // FE00–FE9F: OAM
-    else if (addr < 0xFEA0) {
-        return mem -> oam[addr - 0xFE00];
-    }
-
-    // FEA0–FEFF: unusable region
-    else if (addr < 0xFF00) {
-        return 0xFF;
-    }
-
-    // FF00–FF7F: I/O registers
-    else if (addr < 0xFF80) {
-
-        // Input register, returns 0xF for now - TODO: implement input
-        if (addr == 0xFF00) return 0xF;
-
-        // Force bits 5-7 of IF to high
-        if (addr == 0xFF0F) return 0xE0 | mem -> io[0x0F];
-        return mem -> io[addr - 0xFF00];
-    }
-
-    // FF80–FFFE: HRAM
-    else if (addr < 0xFFFF) {
-        return mem -> hram[addr - 0xFF80];
-    }
-
-    // FFFF: Interrupt Enable
-    else {
-        return mem -> ie;
-    }
-
-}
-
-
-// Write an 8-bit value [value] to memory at [addr].
-void mem_write8(Memory * mem, uint16_t addr, uint8_t value) {
-
-    // Ignore writes to ROM for now (TODO: Implement ROM bank switching)
-    if (addr < 0x8000) {
-        return;
-    }
-
-    // 8000–9FFF: VRAM
-    else if (addr < 0xA000) {
-        mem -> vram[addr - 0x8000] = value;
-    }
-
-    else if (addr < 0xC000) { // ERAM
-        mem -> eram[addr - 0xA000] = value;
-    }
-
-
-    else if (addr < 0xD000) { // WRAM0
-        mem -> wram0[addr - 0xC000] = value;
-    }
-
-
-    else if (addr < 0xE000) { // WRAM1
-        mem -> wram1[addr - 0xD000] = value;
-    }
-
-
-    else if (addr < 0xF000) { // Echo WRAM0
-        mem -> wram0[addr - 0xE000] = value;
-    }
-
-
-    else if (addr < 0xFE00) { // Echo WRAM1
-        mem -> wram1[addr - 0xF000] = value;
-    }
-
-
-    else if (addr < 0xFEA0) { // OAM
-        mem -> oam[addr - 0xFE00] = value;
-    }
-
-
-    else if (addr < 0xFF00) { // unusable
-        return;
-    }
-
-
-    else if (addr < 0xFF80) { // VRAM
-
-        // Writing to FF04 resets DIV
-        if (addr == 0xFF04) {
-            mem->div_internal = 0;
-            mem->io[0x04] = 0;
-        }
-
-        // Prevent writes to IF from clearing bits 5-7
-        if(addr == 0xFF0F) {
-            mem -> io[0x0F] = 0xE0 | value;
-        }
-
-        // Block writes to LY
-        if(addr == 0xFF44) return;
-
-        // DMA transfer
-        if (addr == 0xFF46) {
-            uint16_t source = value * 0x100;
-            for (int i = 0; i < 0xA0; i++) {
-                mem -> oam[i] = mem_read8(mem, source + i);
-            }
-            return;
-        }
-        
-        mem -> io[addr - 0xFF00] = value;
-    }
-
-    else if (addr < 0xFFFF) { // HRAM
-        mem -> hram[addr - 0xFF80] = value;
-    }
-
-    else { // IE
-        mem -> ie = value;
-    }
-
-}
-
 // Read a 16-bit value from memory starting at [addr].
 uint16_t mem_read16(Memory * mem, uint16_t addr) {
     uint8_t low = mem_read8(mem, addr);
@@ -266,7 +104,7 @@ void push16(CPU * cpu, Memory * mem, uint16_t value) {
 
 // Pop an 8-bit value from the stack.
 uint8_t pop8(CPU * cpu, Memory * mem) {
-    return mem_read8(mem, cpu->sp++);
+    return mem_read8(mem, cpu -> sp++);
 }
 
 // Pop a 16-bit value from the stack.
@@ -277,13 +115,52 @@ uint16_t pop16(CPU * cpu, Memory * mem) {
 }
 
 // Update timer registers
-void mem_timer_update(Memory *mem, int cycles){
+void mem_timer_update(Memory *mem, int cycles) {
 
-    while (cycles--) {
+    for (int i = 0; i < cycles; i++) {
 
-        mem->div_internal++;
+        // Check delayed reload
+        if (mem -> tima_reload_delay) {
+            mem -> tima_reload_delay--;
 
-        // Update DIV register
-        mem->io[0x04] = mem->div_internal >> 8;
+            // Reset TIMA to TMA and request timer interrupt
+            if (mem -> tima_reload_delay == 0) {
+                mem -> io[0x05] = mem->io[0x06];
+                mem -> io[0x0F] |= 0x04;
+            }
+        }
+
+        // DIV register
+        uint16_t old_div = mem -> div_internal;
+        mem -> div_internal++;
+        mem -> io[0x04] = mem -> div_internal >> 8;
+
+        // Check if timer is enabled
+        uint8_t tac = mem -> io[0x07];
+        if (tac & 0x04) {
+
+
+            // Check which bit to test falling edge of
+            int bit;
+            switch (tac & 0x03) {
+                case 0: bit = 9; break;
+                case 1: bit = 3; break;
+                case 2: bit = 5; break;
+                case 3: bit = 7; break;
+            }
+
+            int old_bit = (old_div >> bit) & 1;
+            int new_bit = (mem -> div_internal >> bit) & 1;
+
+            // Increment TIMA on falling edge of bit, and prepare for timer interrupt on overflow
+            if (old_bit && !new_bit) {
+                if (mem -> io[0x05] == 0xFF) {
+                    mem -> io[0x05] = 0x00;
+                    mem -> tima_reload_delay = 1;
+                } else {
+                    mem -> io[0x05]++;
+                }
+            }
+        }
     }
 }
