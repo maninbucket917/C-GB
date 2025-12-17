@@ -43,6 +43,10 @@ To run C-GB with a specific ROM, run:
 
 ## Version History
 
+### V 0.21
+
+- Fixed 8x16 tile sprite rendering
+
 ### V 0.20
 
 - Added sprite rendering

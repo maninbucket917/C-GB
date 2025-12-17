@@ -69,9 +69,8 @@ static inline uint8_t ppu_read_tile_pixel(Memory * mem, int tiledata_unsigned, u
     return ((b2 >> bit) & 1) << 1 | ((b1 >> bit) & 1);
 }
 
-static inline uint8_t ppu_read_sprite_pixel(Memory *mem, uint16_t tile_addr, uint8_t x, uint8_t y, bool xflip, bool yflip) {
-    if (xflip) {x = 7 - x;}
-    if (yflip) {y = 7 - y;}
+static inline uint8_t ppu_read_sprite_pixel(Memory *mem, uint16_t tile_addr, uint8_t x, uint8_t y, bool xflip) {
+    if (xflip) x = 7 - x;
 
     uint8_t b1 = mem_read8(mem, tile_addr + (y << 1));
     uint8_t b2 = mem_read8(mem, tile_addr + (y << 1) + 1);
@@ -131,7 +130,22 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
         if (yflip) line = height - 1 - line;
 
         // Get tile address in VRAM
-        uint16_t tile_addr = 0x8000 + (tile << 4);
+        uint8_t tile_index = tile;
+
+        // Handle 8x16 sprites
+        if (tall_sprites) {
+            tile_index &= 0xFE;
+            if (line >= 8) {
+                tile_index += 1;
+                line -= 8;
+            }
+        }
+
+        // Compute tile address
+        bool unsigned_tiles = mem_read8(mem, 0xFF40) & 0x10;
+        uint16_t tile_addr;
+        tile_addr = 0x8000 + (tile_index << 4);
+
 
         // Draw sprite line
         for (int x = 0; x < 8; x++) {
@@ -141,7 +155,7 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
             if (pixel_x < 0 || pixel_x >= SCREEN_WIDTH) continue;
 
             // Get mapped colour of sprite pixel
-            uint8_t colour = ppu_read_sprite_pixel(mem, tile_addr, x, line, xflip, yflip);
+            uint8_t colour = ppu_read_sprite_pixel(mem, tile_addr, x, line, xflip);
 
             // Don't draw transparent pixels
             if (colour == 0) continue;
