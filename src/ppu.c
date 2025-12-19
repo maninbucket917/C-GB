@@ -8,40 +8,44 @@
 const uint32_t palettes[NUM_PALETTES][4] = {{PALETTE_0}, {PALETTE_1}};
 
 /*
-ppu_init
+gb_palette
 
-Initializes the PPU and creates all necessary SDL components.
+Return the uint32_t corresponding to colour [colour] of the active palette [palette_id].
 */
-void ppu_init(PPU * ppu) {
-    SDL_Init(SDL_INIT_VIDEO);
-
-    ppu -> dot = 0;
-    ppu -> ly = 0;
-    ppu -> mode = 2;
-
-    ppu -> window = SDL_CreateWindow("C-GB", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * SCREEN_SCALING, 144 * SCREEN_SCALING, SDL_WINDOW_SHOWN);
-    ppu -> renderer = SDL_CreateRenderer(ppu -> window, -1, SDL_RENDERER_ACCELERATED);
-    ppu -> texture = SDL_CreateTexture(ppu -> renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
-
-    ppu -> palette_id = DEFAULT_PALETTE;
-}
-
-void ppu_reset(PPU * ppu) {
-    ppu -> dot = 0;
-    ppu -> ly = 0;
-    ppu -> mode = 2;
-    ppu -> palette_id = DEFAULT_PALETTE;
-}
-
-
 static inline uint32_t gb_palette(uint8_t palette_id, uint8_t colour) {
     return palettes[palette_id][colour & 3];
 }
 
 /*
+ppu_stat_lyc_check
+
+Request STAT interrupts if ly == lyc.
+*/
+static inline void ppu_stat_lyc_check(PPU * ppu, Memory * mem) {
+    uint8_t stat = mem_read8(mem, 0xFF41);
+    uint8_t lyc  = mem_read8(mem, 0xFF45);
+
+    if (ppu -> ly == lyc) {
+        // Set coincidence flag
+        stat |= 0x04;
+        mem_write8(mem, 0xFF41, stat);
+
+        // If LYC interrupt enabled, request STAT interrupt
+        if (stat & 0x40) {
+            uint8_t IF = mem_read8(mem, 0xFF0F);
+            mem_write8(mem, 0xFF0F, IF | 0x02);
+        }
+    } else {
+        // Clear coincidence flag
+        stat &= ~0x04;
+        mem_write8(mem, 0xFF41, stat);
+    }
+}
+
+/*
 ppu_read_tile_pixel
 
-Returns the colour of the pixel specified by [tiledata_unsigned], [tilemap], [x], and [y].
+Return the colour of the pixel specified by [tiledata_unsigned], [tilemap], [x], and [y].
 */
 static inline uint8_t ppu_read_tile_pixel(Memory * mem, int tiledata_unsigned, uint16_t tilemap, uint16_t x, uint16_t y) {
 
@@ -57,29 +61,110 @@ static inline uint8_t ppu_read_tile_pixel(Memory * mem, int tiledata_unsigned, u
     if (tiledata_unsigned) {
         tile_addr = 0x8000 + (raw_index << 4);
     } else {
-        tile_addr = 0x9000 + ((int8_t)raw_index) * 16;
+        tile_addr = 0x9000 + (((int8_t)raw_index) << 4);
     }
 
     // Get colour map of pixel by adding both bitplanes
-    uint8_t line = y & 7;
-    uint8_t b1 = mem_read8(mem, tile_addr + (line << 1));
-    uint8_t b2 = mem_read8(mem, tile_addr + (line << 1) + 1);
 
+    uint8_t b1 = mem_read8(mem, tile_addr + ((y & 7) << 1));
+    uint8_t b2 = mem_read8(mem, tile_addr + ((y & 7) << 1) + 1);
     uint8_t bit = 7 - (x & 7);
     return ((b2 >> bit) & 1) << 1 | ((b1 >> bit) & 1);
 }
 
-static inline uint8_t ppu_read_sprite_pixel(Memory *mem, uint16_t tile_addr, uint8_t x, uint8_t y, bool xflip) {
+static inline uint8_t ppu_read_sprite_pixel(Memory * mem, uint16_t tile_addr, uint8_t x, uint8_t y, bool xflip) {
     if (xflip) x = 7 - x;
 
-    uint8_t b1 = mem_read8(mem, tile_addr + (y << 1));
-    uint8_t b2 = mem_read8(mem, tile_addr + (y << 1) + 1);
-
-    uint8_t bit = 7 - x;
+    uint8_t b1 = mem_read8(mem, tile_addr + ((y & 7) << 1));
+    uint8_t b2 = mem_read8(mem, tile_addr + ((y & 7) << 1) + 1);
+    uint8_t bit = 7 - (x & 7);
     return ((b2 >> bit) & 1) << 1 | ((b1 >> bit) & 1);
 }
 
-// Update framebuffer with sprite tiles
+/*
+ppu_init
+
+Initialize the PPU and create all necessary SDL components.
+*/
+void ppu_init(PPU * ppu) {
+    SDL_Init(SDL_INIT_VIDEO);
+
+    ppu -> dot = 0;
+    ppu -> ly = 0;
+    ppu -> mode = 2;
+
+    ppu -> window = SDL_CreateWindow("C-GB", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * SCREEN_SCALING, 144 * SCREEN_SCALING, SDL_WINDOW_SHOWN);
+    ppu -> renderer = SDL_CreateRenderer(ppu -> window, -1, SDL_RENDERER_ACCELERATED);
+    ppu -> texture = SDL_CreateTexture(ppu -> renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+    ppu -> palette_id = DEFAULT_PALETTE;
+}
+
+/*
+ppu_reset
+
+Reset the PPU to initial power-on state without creating new SDL components.
+*/
+void ppu_reset(PPU * ppu) {
+    ppu -> dot = 0;
+    ppu -> ly = 0;
+    ppu -> mode = 2;
+    ppu -> palette_id = DEFAULT_PALETTE;
+}
+
+/*
+ppu_draw_tiles
+
+Draw the tiles on the current scanline at ly to the PPU framebuffer.
+*/
+void ppu_draw_tiles(PPU * ppu, Memory * mem) {
+
+    // Read registers
+    uint8_t lcdc = mem_read8(mem, 0xFF40);
+    uint8_t ly   = ppu -> ly;
+    uint8_t scx  = mem_read8(mem, 0xFF43);
+    uint8_t scy  = mem_read8(mem, 0xFF42);
+    uint8_t wx   = mem_read8(mem, 0xFF4B);
+    uint8_t wy   = mem_read8(mem, 0xFF4A);
+
+    // Check for background and window enable bits
+    bool bg_enable = lcdc & 0x01;
+    bool win_enable = lcdc & 0x20;
+
+    // Check which tilemap to use and whether to use signed or unsigned indexing
+    uint16_t bg_map = (lcdc & 0x08) ? 0x9C00 : 0x9800;
+    uint16_t win_map = (lcdc & 0x40) ? 0x9C00 : 0x9800;
+    bool unsigned_tiles = lcdc & 0x10;
+
+    // Get the colour of each background pixel and update the framebuffer
+    for (uint8_t x = 0; x < SCREEN_WIDTH; x++) {
+
+        uint8_t bg_colour = 0;
+
+        if (bg_enable) {
+            uint16_t bx = (x + scx) & 0xFF;
+            uint16_t by = (ly + scy) & 0xFF;
+            bg_colour = ppu_read_tile_pixel(mem, unsigned_tiles, bg_map, bx, by);
+        }
+
+        if (win_enable && bg_enable && ly >= wy && x >= wx - 7) {
+            uint16_t wx_x = x - (wx - 7);
+            uint16_t wy_y = ly - wy;
+            bg_colour = ppu_read_tile_pixel(mem, unsigned_tiles, win_map, wx_x, wy_y);
+        }
+
+        // Check palette
+        uint8_t bgp = mem_read8(mem, 0xFF47);
+        uint8_t mapped_colour = (bgp >> (bg_colour * 2)) & 0x03;
+        ppu -> framebuffer[ly * SCREEN_WIDTH + x] = gb_palette(ppu -> palette_id, mapped_colour);
+    }
+}
+
+/*
+ppu_draw_sprites
+
+Draw the sprites on the current scanline at ly to the PPU framebuffer.
+*/
 void ppu_draw_sprites(PPU * ppu, Memory * mem) {
 
     uint8_t lcdc = mem_read8(mem, 0xFF40);
@@ -93,10 +178,10 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
     bool tall_sprites = lcdc & 0x04;
 
     // Max 10 sprites per scanline
-    int drawn = 0;
+    uint8_t drawn = 0;
 
     // Check each sprite in OAM
-    for (int i = 0; i < 40; i++) {
+    for (uint8_t i = 0; i < 40; i++) {
 
         // Only draw 10 sprites max
         if (drawn >= 10) break;
@@ -160,62 +245,14 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
 
             // If priority is set, only draw over bg colour 0
             if (priority) {
-                uint32_t bg = ppu->framebuffer[ly * SCREEN_WIDTH + pixel_x];
-                if (bg != gb_palette(ppu->palette_id, 0)) continue;
+                uint32_t bg = ppu -> framebuffer[ly * SCREEN_WIDTH + pixel_x];
+                if (bg != gb_palette(ppu -> palette_id, 0)) continue;
             }
 
             // Remap colour to obj_palette and update framebuffer
             uint8_t mapped = (obj_palette >> (colour << 1)) & 3;
             ppu -> framebuffer[ly * SCREEN_WIDTH + pixel_x] = gb_palette(ppu -> palette_id, mapped);
         }
-    }
-}
-
-/*
-ppu_draw_scanline
-
-Draw the scanline at ly to the PPU framebuffer.
-*/
-void ppu_draw_scanline(PPU * ppu, Memory * mem) {
-
-    // Read registers
-    uint8_t lcdc = mem_read8(mem, 0xFF40);
-    uint8_t ly   = ppu -> ly;
-    uint8_t scx  = mem_read8(mem, 0xFF43);
-    uint8_t scy  = mem_read8(mem, 0xFF42);
-    uint8_t wx   = mem_read8(mem, 0xFF4B);
-    uint8_t wy   = mem_read8(mem, 0xFF4A);
-
-    // Check for background and window enable bits
-    bool bg_enable = lcdc & 0x01;
-    bool win_enable = lcdc & 0x20;
-
-    // Check which tilemap to use and whether to use signed or unsigned indexing
-    uint16_t bg_map = (lcdc & 0x08) ? 0x9C00 : 0x9800;
-    uint16_t win_map = (lcdc & 0x40) ? 0x9C00 : 0x9800;
-    bool unsigned_tiles = lcdc & 0x10;
-
-    // Get the colour of each background pixel and update the framebuffer
-    for (int x = 0; x < SCREEN_WIDTH; x++) {
-
-        uint8_t bg_colour = 0;
-
-        if (bg_enable) {
-            uint16_t bx = (x + scx) & 0xFF;
-            uint16_t by = (ly + scy) & 0xFF;
-            bg_colour = ppu_read_tile_pixel(mem, unsigned_tiles, bg_map, bx, by);
-        }
-
-        if (win_enable && bg_enable && ly >= wy && x >= wx - 7) {
-            uint16_t wx_x = x - (wx - 7);
-            uint16_t wy_y = ly - wy;
-            bg_colour = ppu_read_tile_pixel(mem, unsigned_tiles, win_map, wx_x, wy_y);
-        }
-
-        // Check palette
-        uint8_t bgp = mem_read8(mem, 0xFF47);
-        uint8_t mapped_colour = (bgp >> (bg_colour * 2)) & 0x03;
-        ppu -> framebuffer[ly * SCREEN_WIDTH + x] = gb_palette(ppu -> palette_id, mapped_colour);
     }
 }
 
@@ -252,6 +289,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
                     ppu -> dot = 0;
                     ppu -> ly++;
                     mem -> io [0x44] = ppu -> ly;
+                    ppu_stat_lyc_check(ppu, mem);
 
                     if (ppu -> ly == 144) {
                         // Enter VBlank
@@ -282,6 +320,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
                     ppu -> dot = 0;
                     ppu -> ly++;
                     mem -> io [0x44] = ppu -> ly;
+                    ppu_stat_lyc_check(ppu, mem);
 
                     // Reset LY and start OAM scan
                     if (ppu -> ly > 153) {
@@ -304,7 +343,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
             
                 // Draw scanline at end of mode 3 and reset to HBlank
                 if (ppu -> dot >= 252) {
-                    ppu_draw_scanline(ppu, mem);
+                    ppu_draw_tiles(ppu, mem);
                     ppu_draw_sprites(ppu, mem);
                     ppu -> mode = 0;
                 }
@@ -312,9 +351,19 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
 
         }
     }
+
+    // Update lower 2 bits of STAT register with new PPU mode
+    uint8_t stat = mem -> io[0x41] & 0xF8;
+    stat |= (ppu -> mode & 0x03);
+    mem -> io[0x41] = stat | 0x80;
 }
 
+/*
+ppu_palette_swap
+
+Toggle to the next selectable palette.
+*/
 void ppu_palette_swap(PPU * ppu) {
     ppu -> palette_id ++;
     ppu -> palette_id %= NUM_PALETTES;
-}
+} 

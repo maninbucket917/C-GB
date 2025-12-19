@@ -1,16 +1,15 @@
-#include <stdint.h>
-
 #ifndef OPCODES_H
 #define OPCODES_H
+
+#include <stdint.h>
 
 struct CPU;
 struct Memory;
 
 // Define function pointer type for opcodes
-typedef uint8_t (*opcode_fn)(struct CPU * cpu, struct Memory * m);
+typedef uint8_t (*opcode_fn)(struct CPU * cpu, struct Memory * mem);
 
-// Function pointer tables
-extern opcode_fn opcode_table[256];
-extern opcode_fn cb_opcode_table[256];
+// Function pointer table
+extern opcode_fn opcode_table[NUM_OPCODES];
 
 #endif

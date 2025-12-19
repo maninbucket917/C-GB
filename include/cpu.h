@@ -1,3 +1,6 @@
+#ifndef CPU_H
+#define CPU_H
+
 #include <stdint.h>
 
 #include "memory.h"
@@ -5,9 +8,6 @@
 
 typedef struct Memory Memory;
 typedef struct PPU PPU;
-
-#ifndef CPU_H
-#define CPU_H
 
 typedef struct CPU{
 
@@ -41,7 +41,7 @@ typedef struct CPU{
 
     // Pointers to PPU and memory
     PPU * ppu;
-    Memory * memory;
+    Memory * mem;
 
 }CPU;
 
@@ -120,48 +120,14 @@ uint16_t get_hl_plus(CPU * cpu);
 // Flag read/write
 // ---------------
 
-// Set the zero flag to [val].
-static inline void set_zero_flag(CPU * cpu, uint8_t val) {
-    cpu -> f = (cpu -> f & ~0x80) | ((val ? 1 : 0) << 7);
-    cpu -> f &= 0xF0;
+// Set the flag [flag] to [val].
+static inline void set_flag(CPU * cpu, uint8_t flag, uint8_t val) {
+    cpu -> f = (cpu -> f & ~flag) | (-(val != 0) & flag);
 }
 
-// Set the subtract flag to [val].
-static inline void set_subtract_flag(CPU * cpu, uint8_t val) {
-    cpu -> f = (cpu -> f & ~0x40) | ((val ? 1 : 0) << 6);
-    cpu -> f &= 0xF0;
-}
-
-// Set the half carry flag to [val].
-static inline void set_half_carry_flag(CPU * cpu, uint8_t val) {
-    cpu -> f = (cpu -> f & ~0x20) | ((val ? 1 : 0) << 5);
-    cpu -> f &= 0xF0;
-}
-
-// Set the carry flag to [val].
-static inline void set_carry_flag(CPU * cpu, uint8_t val) {
-    cpu -> f = (cpu -> f & ~0x10) | ((val ? 1 : 0) << 4);
-    cpu -> f &= 0xF0;
-}
-
-// Return the value of the zero flag.
-static inline uint8_t get_zero_flag(CPU * cpu) {
-    return (cpu -> f & 0x80) != 0;
-}
-
-// Return the value of the subtract flag.
-static inline uint8_t get_subtract_flag(CPU * cpu) {
-    return (cpu -> f & 0x40) != 0;
-}
-
-// Return the value of the half carry flag.
-static inline uint8_t get_half_carry_flag(CPU * cpu) {
-    return (cpu -> f & 0x20) != 0;
-}
-
-// Return the value of the carry flag.
-static inline uint8_t get_carry_flag(CPU * cpu) {
-    return (cpu -> f & 0x10) != 0;
+// Return the flag [flag].
+static inline uint8_t get_flag(CPU * cpu, uint8_t flag) {
+    return (cpu -> f & flag) != 0;
 }
 
 // ----------------
@@ -189,15 +155,14 @@ static inline uint16_t get_imm16(CPU * cpu, Memory * mem) {
 void cpu_handle_interrupts(CPU * cpu, Memory * mem);
 
 // Execution step
-int cpu_step(CPU * cpu, Memory * mem);
+void cpu_step(CPU * cpu, Memory * mem);
 
 // Tick for timers, PPU, and frame cycles
 static inline void tick(CPU * cpu, int cycles) {
-    mem_timer_update(cpu -> memory, cycles);
-    ppu_step(cpu -> ppu, cpu -> memory, cycles);
+    mem_timer_update(cpu -> mem, cycles);
+    ppu_step(cpu -> ppu, cpu -> mem, cycles);
     cpu -> frame_cycles -= cycles;
 }
-
 
 // Debug helpers
 void print_cpu_state(CPU * cpu, Memory * mem, FILE * file);

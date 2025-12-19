@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     mem_init(&mem);
 
     cpu.ppu = &ppu;
-    cpu.memory = &mem;
+    cpu.mem = &mem;
 
     uint8_t joypad_state = 0xFF;
     mem.joypad_state = &joypad_state;
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
                         mem_init(&mem);
                         ppu_reset(&ppu);
                         cpu.ppu = &ppu;
-                        cpu.memory = &mem;
+                        cpu.mem = &mem;
                         mem.joypad_state = &joypad_state;
 
                         // Reload ROM
@@ -104,8 +104,7 @@ int main(int argc, char *argv[]) {
         // Emulate 1 frame
         cpu.frame_cycles = CYCLES_PER_FRAME;
         while (cpu.frame_cycles > 0) {
-            int cycles = cpu_step(&cpu, &mem);
-            if (cycles < 0) {running = 0; break;}
+            cpu_step(&cpu, &mem);
         }
 
         // Update FPS counter

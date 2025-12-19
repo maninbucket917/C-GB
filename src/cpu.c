@@ -118,7 +118,7 @@ cpu_step
 
 Executes one instruction, and handles halt and interrupt logic.
 */
-int cpu_step(CPU * cpu, Memory * mem) {
+void cpu_step(CPU * cpu, Memory * mem) {
 
     // CPU halt logic
     if (cpu -> halted) {
@@ -130,7 +130,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
 
             // No interrupt, stay halted 
             tick(cpu, 4);
-            return 4;
+            return;
         }
 
         // If interrupts are pending, wake CPU
@@ -139,10 +139,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
     }
 
     // Fetch opcode
-    int instruction_cycles = 0;
-    uint16_t fetch_pc = cpu -> pc;
-    uint8_t op = mem_read8(mem, fetch_pc);
-
+    uint8_t op = mem_read8(mem, cpu -> pc);
     
     if (!cpu -> halt_bug) {
         cpu -> pc++;
@@ -150,30 +147,10 @@ int cpu_step(CPU * cpu, Memory * mem) {
         cpu -> halt_bug = 0;
     }
 
-    opcode_fn handler;
+    opcode_fn handler = opcode_table[(op == 0xCB) ? 0x100 + get_opcode(cpu, mem) : op];
 
-    // Check for CB prefixed unstructions
-    if (op == 0xCB) {
-        uint8_t cb = mem_read8(mem, cpu -> pc);
-        cpu -> pc++;
-
-        handler = cb_opcode_table[cb];
-        if (!handler) {
-            printf("Unrecognized opcode: CB %02X at PC=%04X\n", cb, fetch_pc);
-            return -1;
-        }
-
-        instruction_cycles += handler(cpu, mem);
-    }else{
-        handler = opcode_table[op];
-
-        if (!handler) {
-            printf("Unrecognized opcode: %02X at PC=%04X\n", op, fetch_pc);
-            return -1;
-        }
-
-        instruction_cycles += handler(cpu, mem);
-    }
+    // Run instruction handler
+    uint8_t instruction_cycles = handler(cpu, mem);
 
     // Check for EI delay
     if (cpu -> ime_delay) {
@@ -185,7 +162,7 @@ int cpu_step(CPU * cpu, Memory * mem) {
 
     cpu_handle_interrupts(cpu, mem);
 
-    return instruction_cycles;
+    return;
 }
 
 /*

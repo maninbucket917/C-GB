@@ -1,11 +1,11 @@
+#ifndef MEMORY_H
+#define MEMORY_H
+
 #include <stdint.h>
 
 #include "config.h"
 
 typedef struct CPU CPU;
-
-#ifndef MEMORY_H
-#define MEMORY_H
 
 typedef struct Memory {
     uint8_t rom0[ROM_BANK_0_SIZE];      // 0000–3FFF
@@ -144,36 +144,29 @@ static inline void mem_write8(Memory * mem, uint16_t addr, uint8_t value) {
         mem -> eram[addr - 0xA000] = value;
     }
 
-
     else if (addr < 0xD000) { // WRAM0
         mem -> wram0[addr - 0xC000] = value;
     }
-
 
     else if (addr < 0xE000) { // WRAM1
         mem -> wram1[addr - 0xD000] = value;
     }
 
-
     else if (addr < 0xF000) { // Echo WRAM0
         mem -> wram0[addr - 0xE000] = value;
     }
-
 
     else if (addr < 0xFE00) { // Echo WRAM1
         mem -> wram1[addr - 0xF000] = value;
     }
 
-
     else if (addr < 0xFEA0) { // OAM
         mem -> oam[addr - 0xFE00] = value;
     }
 
-
     else if (addr < 0xFF00) { // unusable
         return;
     }
-
 
     else if (addr < 0xFF80) { // VRAM
 
@@ -221,7 +214,6 @@ static inline void mem_write8(Memory * mem, uint16_t addr, uint8_t value) {
 
 uint16_t mem_read16(Memory * mem, uint16_t addr);
 void mem_write16(Memory * mem, uint16_t addr, uint16_t value);
-
 
 // Stack push/pop
 

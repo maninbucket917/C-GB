@@ -36,12 +36,12 @@ This file declares constants used by the system.
 
 // Number of opcodes
 
-#define NUM_OPCODES 0x100 // 256 opcodes per table
+#define NUM_OPCODES 0x200 // 256 opcodes per table, for a total of 512
 
 // Frame timing constants
 
 #define CYCLES_PER_FRAME 70224
-#define GB_FPS 4194304.0 / 70224.0
+#define GB_FPS 4194304.0 / (CYCLES_PER_FRAME)
 #define FRAME_TIME 1.0 / (GB_FPS)
 
 // Input keys
@@ -58,5 +58,12 @@ This file declares constants used by the system.
 
 #define BUTTON_RESET SDLK_F1
 #define BUTTON_PALETTE_SWAP SDLK_F2
+
+// Flag constants
+
+#define FLAG_Z 0x80
+#define FLAG_N 0x40
+#define FLAG_H 0x20
+#define FLAG_C 0x10
 
 #endif

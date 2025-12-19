@@ -10,7 +10,7 @@ Currently, no MBCs are implemented, so only 32KB ROMs will run.
 The default keyboard bindings are:
 
 |Button|Keybind    |
-|------|-----------|
+|:----:|:---------:|
 |A     |X          |
 |B     |Z          |
 |Select|Right Shift|
@@ -20,7 +20,7 @@ The default keyboard bindings are:
 Additional function keys:
 
 |Key   |Function    |
-|------|------------|
+|:----:|:----------:|
 |F1    |Reset       |
 |F2    |Palette swap|
 
@@ -43,9 +43,23 @@ To run C-GB with a specific ROM, run:
 
 ## Version History
 
+### V 0.22
+
+- Added compatibility list at COMPATIBILITY.md
+- Added STAT interrupts, fixing broken/corrupted graphics in certain games
+
+- Improved opcode execution and flag read/writes to be more performant, resulting in a ~10% raw performance boost
+- Improved README structuring
+
+- Fixed PPU mode changes not being written to STAT, removing several freezes and fixing broken/corrupted graphics in certain games
+
+- Total number of tested working ROMs: 28
+
 ### V 0.21
 
 - Fixed 8x16 tile sprite rendering
+
+- Total number of tested working ROMs: 14
 
 ### V 0.20
 
@@ -54,8 +68,10 @@ To run C-GB with a specific ROM, run:
 - Added reset and palette swap hotkeys
 - Added FPS counter
 - Added Controls section to README
+
 - Improved FPS accuracy (~62 FPS -> ~59.7 FPS)
 - Improved tile rendering performance
+
 - Fixed timer behaviour to pass blargg CPU test #2
 - Fixed several minor formatting issues
 - Fixed Makefile to update if a header file is changed
@@ -64,13 +80,15 @@ To run C-GB with a specific ROM, run:
 
 - Fixed interrupt cancelling behaviour to pass mooneye's ie_push test
 - Fixed IF read/write behaviour to pass mooneye's if_ie_registers test
+
 - The following mooneye tests were also performed and passed: mem_oam, reg_f, daa, basic, boot_regs-dmgABC
 
 ### V 0.1
 
 Initial version
 
-- Renders background and window tiles
+- Added background and window tile rendering
+
 - Passes all blargg CPU test ROMs, with the exception of #2
 
 ## Disclaimer
