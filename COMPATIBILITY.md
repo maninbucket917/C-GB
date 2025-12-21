@@ -36,8 +36,8 @@
 | Master Karateka | Japan | ✓ | |
 | Minesweeper - Soukaitei | Japan | ✓ | |
 | Missile Command | USA, Europe | ✓ | |
-| NFL Football | USA | ✓ | |
 | Motocross Maniacs | USA | ✓ | |
+| NFL Football | USA | ✓ | |
 | Othello | Europe | ✓ | |
 | Palamedes | Europe | ✓ | |
 | Pipe Dream | USA | ✓ | |
