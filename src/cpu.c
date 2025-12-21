@@ -98,9 +98,24 @@ static inline void check_ei_delay(CPU * cpu){
 
 // Request a serial interrupt if start bit is set.
 static inline void serial_check(Memory * mem) {
+    static int serial_count = 0;
+
     if (mem->io[0x02] & 0x80) {
-        mem->io[0x02] &= ~0x80;
-        mem->io[0x0F] |= 0x08;
+
+        // Make a dummy transfer
+        mem->io[0x01] = (mem->io[0x01] << 1) | 1;
+        serial_count++;
+
+        if (serial_count >= 8) {
+            mem->io[0x02] &= ~0x80;
+            serial_count = 0;
+
+            if (mem->io[0x02 & 0x01]) { 
+                mem->io[0x0F] |= 0x08;
+            }
+        }
+    } else {
+        serial_count = 0;
     }
 }
 
