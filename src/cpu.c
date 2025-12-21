@@ -110,7 +110,7 @@ static inline void serial_check(Memory * mem) {
             mem->io[0x02] &= ~0x80;
             serial_count = 0;
 
-            if (mem->io[0x02 & 0x01]) { 
+            if (mem->io[0x02] & 0x01) { 
                 mem->io[0x0F] |= 0x08;
             }
         }
