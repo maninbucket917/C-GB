@@ -96,7 +96,7 @@ static inline uint8_t mem_read8(Memory * mem, uint16_t addr) {
 
         if (addr == 0xFF00) {
             uint8_t select = mem -> io[0x00] & 0x30;
-            uint8_t result = 0xCF; // bits 6–7 = 1, bits 0–3 cleared
+            uint8_t result = 0xCF;
 
             if (!(select & 0x10)) {
                 // D-pad selected

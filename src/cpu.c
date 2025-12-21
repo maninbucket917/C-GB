@@ -40,78 +40,69 @@ cpu_handle_interrupts
 
 Check for and begin servicing interrupts if interrupt flags are set.
 */
-void cpu_handle_interrupts(CPU * cpu, Memory * mem) {
+void cpu_handle_interrupts(CPU *cpu, Memory *mem)
+{
+    // Interrupts only taken if IME is set
+    if (!cpu->ime)
+        return;
 
     uint8_t IE = mem_read8(mem, 0xFFFF); // Interrupt Enable
     uint8_t IF = mem_read8(mem, 0xFF0F); // Interrupt Flag
     uint8_t pending = IE & IF;
 
-    // No cycles taken if no interrupts are pending
-    if(!pending) {
+    if (!pending)
         return;
-    }
 
-    if(!cpu -> ime) {
-        return;
-    }
+    // Interrupt acknowledge (atomic)
+    cpu->ime = 0;
+    cpu->halted = 0;
 
-    // Find highest priority interrupt
+    // Highest priority first
     for (int i = 0; i < 5; i++) {
-
         if (pending & (1 << i)) {
 
-            // Disable interrupts and wake CPU
-            cpu -> ime = 0;
-            cpu -> halted = 0;
-
-            // Push high byte of PC
-            push8(cpu, mem, cpu -> pc >> 8);
-            tick(cpu, 4);
-
-            // Check for early cancellation
-            IE = mem_read8(mem, 0xFFFF);
-            IF = mem_read8(mem, 0xFF0F);
-
-            uint8_t cancelled = !(IE & IF & (1 << i));
-
-            // Push low byte of PC
-            push8(cpu, mem, cpu -> pc & 0xFF);
-            tick(cpu, 4);
-
-            // Interrupt is cancelled if IE or IF change during the push
-            if (cancelled) {
-
-                // Check if any other interrupts are available to process
-                uint8_t remaining = (IE & IF) & ~(1 << i);
-                if (!remaining) {
-                    cpu -> pc = 0x0000;
-                    tick(cpu, 12);
-                    return;
-                }
-                continue;
-            }
-
-            // Jump to interrupt vector
-            switch (i) {
-                case 0: cpu -> pc = 0x40; break; // V-Blank
-                case 1: cpu -> pc = 0x48; break; // LCD STAT
-                case 2: cpu -> pc = 0x50; break; // Timer
-                case 3: cpu -> pc = 0x58; break; // Serial
-                case 4: cpu -> pc = 0x60; break; // Joypad
-            }
-
-            // Clear the corresponding IF bit
+            // Clear IF bit IMMEDIATELY
             mem_write8(mem, 0xFF0F, IF & ~(1 << i));
 
-            // Add cycles for interrupt handling
-            tick(cpu, 12);
+            // Push PC (16-bit, high first)
+            push8(cpu, mem, cpu->pc >> 8);
+            push8(cpu, mem, cpu->pc & 0xFF);
+
+            // Jump to interrupt vector
+            static const uint16_t vectors[5] = {
+                0x40, // V-Blank
+                0x48, // LCD STAT
+                0x50, // Timer
+                0x58, // Serial
+                0x60  // Joypad
+            };
+
+            cpu->pc = vectors[i];
+
+            // Interrupt handling cost
+            tick(cpu, 20);
             return;
         }
     }
+}
 
+
+// Set ime to 1 if ime_delay is 1.
+static inline void check_ei_delay(CPU * cpu){
+    if (cpu -> ime_delay) {
+        cpu -> ime_delay = 0;
+        cpu -> ime = 1;
+    }
     return;
 }
 
+// Request a serial interrupt if start bit is set.
+static inline void serial_check(Memory * mem) {
+    if (mem->io[0x02] & 0x80) {
+        mem->io[0x02] &= ~0x80;
+        mem->io[0x0F] |= 0x08;
+    }
+}
 
 /*
 cpu_step
@@ -121,46 +112,49 @@ Executes one instruction, and handles halt and interrupt logic.
 void cpu_step(CPU * cpu, Memory * mem) {
 
     // CPU halt logic
-    if (cpu -> halted) {
+    if (cpu->halted) {
         uint8_t IE = mem_read8(mem, 0xFFFF);
         uint8_t IF = mem_read8(mem, 0xFF0F);
         uint8_t pending = IE & IF;
 
         if (!pending) {
-
-            // No interrupt, stay halted 
             tick(cpu, 4);
+
+            // Check for EI delay
+            check_ei_delay(cpu);
             return;
         }
 
-        // If interrupts are pending, wake CPU
-        cpu -> halted = 0;
-
+        cpu->halted = 0;
     }
+
+    // Check for interrupts
+    cpu_handle_interrupts(cpu, mem);
 
     // Fetch opcode
     uint8_t op = mem_read8(mem, cpu -> pc);
     
+    // Check for halt bug behaviour
     if (!cpu -> halt_bug) {
         cpu -> pc++;
     } else {
         cpu -> halt_bug = 0;
     }
 
-    opcode_fn handler = opcode_table[(op == 0xCB) ? 0x100 + get_opcode(cpu, mem) : op];
-
     // Run instruction handler
+    opcode_fn handler = opcode_table[(op == 0xCB) ? 0x100 + get_opcode(cpu, mem) : op];
     uint8_t instruction_cycles = handler(cpu, mem);
-
-    // Check for EI delay
-    if (cpu -> ime_delay) {
-        cpu -> ime_delay = 0;
-        cpu -> ime = 1;
-    }
-
     tick(cpu, instruction_cycles);
 
-    cpu_handle_interrupts(cpu, mem);
+    // Check for EI delay
+    check_ei_delay(cpu);
+
+    // Check for serial transfer
+    serial_check(mem);
+
+    // DEBUG: print CPU state
+    // WARNING: Uncommenting this line destroys performance
+    //print_cpu_state(cpu, mem);
 
     return;
 }
@@ -168,7 +162,7 @@ void cpu_step(CPU * cpu, Memory * mem) {
 /*
 Used for debugging
 */
-void print_cpu_state(CPU * cpu, Memory * mem, FILE * file) {
-    fprintf(file, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
+void print_cpu_state(CPU * cpu, Memory * mem) {
+    printf("A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
     cpu -> a, cpu -> f, cpu -> b, cpu -> c, cpu -> d, cpu -> e, cpu -> h, cpu -> l, cpu -> sp, cpu -> pc, mem_read8(mem, cpu -> pc), mem_read8(mem, cpu -> pc+1),mem_read8(mem, cpu -> pc+2),mem_read8(mem, cpu -> pc+3));
 }

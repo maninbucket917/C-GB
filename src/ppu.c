@@ -256,6 +256,14 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
     }
 }
 
+// Update PPU mode and update lower 2 bits of STAT register with new PPU mode, then checks for STAT interrupts
+static inline void ppu_mode_change(PPU * ppu, Memory * mem, uint8_t mode){
+    ppu -> mode = mode;
+    uint8_t stat = mem -> io[0x41] & 0xF8;
+    stat |= (ppu -> mode & 0x03);
+    mem -> io[0x41] = stat | 0x80;
+}
+
 /*
 ppu_step
 
@@ -272,7 +280,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
             ppu -> dot = 0;
             ppu -> ly = 0;
             mem_write8(mem, 0xFF44, 0);
-            ppu -> mode = 0;
+            ppu_mode_change(ppu, mem, 0);
             continue;
         }
 
@@ -293,7 +301,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
 
                     if (ppu -> ly == 144) {
                         // Enter VBlank
-                        ppu -> mode = 1;
+                        ppu_mode_change(ppu, mem, 1);
 
                         // Request VBlank interrupt
                         uint8_t IF = mem_read8(mem, 0xFF0F);
@@ -307,7 +315,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
 
                     } else {
                         // Next scanline is OAM scan
-                        ppu -> mode = 2;
+                        ppu_mode_change(ppu, mem, 2);
                     }
                 }
 
@@ -325,7 +333,8 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
                     // Reset LY and start OAM scan
                     if (ppu -> ly > 153) {
                         ppu -> ly = 0;
-                        ppu -> mode = 2;
+                        ppu_stat_lyc_check(ppu, mem);
+                        ppu_mode_change(ppu, mem, 2);
                         mem_write8(mem, 0xFF44, 0);
                     }
                 }
@@ -335,7 +344,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
 
                 // Change to drawing mode after 80 dots
                 if (ppu -> dot >= 80) {
-                    ppu -> mode = 3;
+                    ppu_mode_change(ppu, mem, 3);
                 }
                 break;
 
@@ -345,17 +354,12 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
                 if (ppu -> dot >= 252) {
                     ppu_draw_tiles(ppu, mem);
                     ppu_draw_sprites(ppu, mem);
-                    ppu -> mode = 0;
+                    ppu_mode_change(ppu, mem, 0);
                 }
                 break;
 
         }
     }
-
-    // Update lower 2 bits of STAT register with new PPU mode
-    uint8_t stat = mem -> io[0x41] & 0xF8;
-    stat |= (ppu -> mode & 0x03);
-    mem -> io[0x41] = stat | 0x80;
 }
 
 /*

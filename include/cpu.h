@@ -165,6 +165,6 @@ static inline void tick(CPU * cpu, int cycles) {
 }
 
 // Debug helpers
-void print_cpu_state(CPU * cpu, Memory * mem, FILE * file);
+void print_cpu_state(CPU * cpu, Memory * mem);
 
 #endif

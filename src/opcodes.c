@@ -672,7 +672,15 @@ static inline uint8_t op_74(CPU * cpu, Memory * mem) {mem_write8(mem, get_hl(cpu
 static inline uint8_t op_75(CPU * cpu, Memory * mem) {mem_write8(mem, get_hl(cpu), cpu -> l); return 8;}
 
 // HALT
-static inline uint8_t op_76(CPU * cpu, Memory * mem) {(void)mem; cpu -> halted = 1; return 4;}
+static inline uint8_t op_76(CPU * cpu, Memory * mem) {
+    cpu -> halted = 1;
+
+    uint8_t IE = mem_read8(mem, 0xFFFF);
+    uint8_t IF = mem_read8(mem, 0xFF0F);
+
+    cpu -> halt_bug = (!cpu -> ime && (IE & IF));
+    return 4;
+}
 
 // LD (HL), A
 static inline uint8_t op_77(CPU * cpu, Memory * mem) {mem_write8(mem, get_hl(cpu), cpu -> a); return 8;}
@@ -915,7 +923,7 @@ static inline uint8_t op_C5(CPU * cpu, Memory * mem) {push16(cpu, mem, get_bc(cp
 static inline uint8_t op_C6(CPU * cpu, Memory * mem) {op_add(cpu, get_imm8(cpu, mem)); return 8;}
 
 // RST 0
-static inline uint8_t op_C7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x00; return 4;}
+static inline uint8_t op_C7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x00; return 16;}
 
 // RET Z
 static inline uint8_t op_C8(CPU * cpu, Memory * mem) {return op_ret(cpu, mem, get_flag(cpu, FLAG_Z));}
@@ -957,7 +965,7 @@ static inline uint8_t op_D5(CPU * cpu, Memory * mem) {push16(cpu, mem, get_de(cp
 static inline uint8_t op_D6(CPU * cpu, Memory * mem) {op_sub(cpu, get_imm8(cpu, mem)); return 8;}
 
 // RST 2
-static inline uint8_t op_D7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x10; return 4;}
+static inline uint8_t op_D7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x10; return 16;}
 
 // RET C
 static inline uint8_t op_D8(CPU * cpu, Memory * mem) {return op_ret(cpu, mem, get_flag(cpu, FLAG_C));}
@@ -993,7 +1001,7 @@ static inline uint8_t op_E5(CPU * cpu, Memory * mem) {push16(cpu, mem, get_hl(cp
 static inline uint8_t op_E6(CPU * cpu, Memory * mem) {op_and(cpu, get_imm8(cpu, mem)); return 8;}
 
 // RST 4
-static inline uint8_t op_E7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x20; return 4;}
+static inline uint8_t op_E7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x20; return 16;}
 
 // ADD SP, s8
 static inline uint8_t op_E8(CPU * cpu, Memory * mem) {
@@ -1027,7 +1035,7 @@ static inline uint8_t op_EE(CPU * cpu, Memory * mem) {op_xor(cpu, get_imm8(cpu, 
 static inline uint8_t op_EF(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x28; return 16;}
 
 // LD A, (a8)
-static inline uint8_t op_F0(CPU * cpu, Memory * mem) {op_ld_r_n(&cpu -> a, mem_read8(mem, 0xFF00 | get_imm8(cpu, mem))); return 12;}
+static inline uint8_t op_F0(CPU * cpu, Memory * mem) {uint8_t offset = get_imm8(cpu, mem); tick(cpu, 4); cpu -> a = mem_read8(mem, 0xFF00 | offset); return 8;}
 
 // POP AF
 static inline uint8_t op_F1(CPU * cpu, Memory * mem) {set_af(cpu, pop16(cpu, mem)); return 12;}
@@ -1045,7 +1053,7 @@ static inline uint8_t op_F5(CPU * cpu, Memory * mem) {push16(cpu, mem, get_af(cp
 static inline uint8_t op_F6(CPU * cpu, Memory * mem) {op_or(cpu, get_imm8(cpu, mem)); return 8;}
 
 // RST 6
-static inline uint8_t op_F7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x30; return 4;}
+static inline uint8_t op_F7(CPU * cpu, Memory * mem) {push16(cpu, mem, cpu -> pc); cpu -> pc = 0x30; return 16;}
 
 // LD HL, SP+r8
 static inline uint8_t op_F8(CPU * cpu, Memory * mem) {
@@ -1068,7 +1076,7 @@ static inline uint8_t op_F8(CPU * cpu, Memory * mem) {
 static inline uint8_t op_F9(CPU * cpu, Memory * mem) {(void)mem; cpu -> sp = get_hl(cpu); return 8;}
 
 // LD A, (a16)
-static inline uint8_t op_FA(CPU * cpu, Memory * mem) {op_ld_r_n(&cpu -> a, mem_read8(mem, get_imm16(cpu, mem))); return 16;}
+static inline uint8_t op_FA(CPU *cpu, Memory *mem) {uint16_t addr = get_imm16(cpu, mem); tick(cpu, 8); cpu -> a = mem_read8(mem, addr); return 8;}
 
 // EI
 static inline uint8_t op_FB(CPU * cpu, Memory * mem) {(void)mem; cpu -> ime_delay = 1; return 4;}

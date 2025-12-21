@@ -43,6 +43,15 @@ To run C-GB with a specific ROM, run:
 
 ## Version History
 
+### V 0.23
+
+- Added serial interrupts, fixing certain games not booting properly
+
+- Fixed CPU mid-instruction order to pass IME timing tests
+- Fixed certain RST instructions mistakenly returning M-cycles rather than T-cycles
+
+- Total number of tested working ROMs: 43
+
 ### V 0.22
 
 - Added compatibility list at COMPATIBILITY.md
