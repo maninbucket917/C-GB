@@ -355,6 +355,7 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
                     ppu_draw_tiles(ppu, mem);
                     ppu_draw_sprites(ppu, mem);
                     ppu_mode_change(ppu, mem, 0);
+                    ppu_stat_lyc_check(ppu, mem);
                 }
                 break;
 
