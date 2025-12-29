@@ -5,6 +5,21 @@ This file declares constants used by the system.
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Input keys
+
+#define BUTTON_A SDLK_x
+#define BUTTON_B SDLK_z
+#define BUTTON_SELECT SDLK_RSHIFT
+#define BUTTON_START SDLK_RETURN
+
+#define BUTTON_RIGHT SDLK_RIGHT
+#define BUTTON_LEFT SDLK_LEFT
+#define BUTTON_UP SDLK_UP
+#define BUTTON_DOWN SDLK_DOWN
+
+#define BUTTON_RESET SDLK_F1
+#define BUTTON_PALETTE_SWAP SDLK_F2
+
 // Screen size
 
 #define SCREEN_WIDTH 160
@@ -43,21 +58,6 @@ This file declares constants used by the system.
 #define CYCLES_PER_FRAME 70224
 #define GB_FPS 4194304.0 / (CYCLES_PER_FRAME)
 #define FRAME_TIME 1.0 / (GB_FPS)
-
-// Input keys
-
-#define BUTTON_A SDLK_x
-#define BUTTON_B SDLK_z
-#define BUTTON_SELECT SDLK_RSHIFT
-#define BUTTON_START SDLK_RETURN
-
-#define BUTTON_RIGHT SDLK_RIGHT
-#define BUTTON_LEFT SDLK_LEFT
-#define BUTTON_UP SDLK_UP
-#define BUTTON_DOWN SDLK_DOWN
-
-#define BUTTON_RESET SDLK_F1
-#define BUTTON_PALETTE_SWAP SDLK_F2
 
 // Flag constants
 

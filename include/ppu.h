@@ -14,6 +14,10 @@ typedef struct PPU{
     uint8_t ly; // 0–153
     uint8_t mode; // 0 = HBlank, 1 = VBlank, 2 = OAM, 3 = VRAM
 
+    // Window timing
+    uint8_t window_line;
+    uint8_t window_drawn;
+
     // SDL components
     SDL_Window * window;
     SDL_Renderer * renderer;
@@ -26,6 +30,22 @@ typedef struct PPU{
     uint8_t palette_id;
 
 } PPU;
+
+typedef struct Sprite{
+
+    // Index of sprite in OAM
+    uint8_t index;
+
+    // X and Y position on screen
+    int y;
+    int x;
+
+    // Address of tile in OAM
+    uint16_t tile;
+
+    // Attribute bits
+    uint8_t attr;
+} Sprite;
 
 // --------------
 // Initialization

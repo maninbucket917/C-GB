@@ -43,6 +43,14 @@ To run C-GB with a specific ROM, run:
 
 ## Version History
 
+### V 0.24
+
+- Improved sprite rendering performance by saving OAM sprite data in structs
+
+- Fixed sprite rendering and window logic to pass dmg-acid2 test
+
+- Total number of tested working ROMs: 54
+
 ### V 0.23
 
 - Added serial interrupts, fixing certain games not booting properly
