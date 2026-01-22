@@ -33,7 +33,7 @@ The controls and the default palette may be changed in `/include/config.h`.
 Dependencies:
 - make
 - gcc
-- SDL2 development libraries (libsdl2-dev)
+- SDL2 development libraries (libsdl2-2.0-0 and libsdl2-dev)
 
 To compile the source code, navigate to the root and run:  
 `make`
