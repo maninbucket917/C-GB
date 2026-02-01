@@ -5,7 +5,9 @@
 
 #include "config.h"
 
+
 typedef struct CPU CPU;
+typedef struct GB GB;
 
 typedef struct Memory {
     uint8_t rom0[ROM_BANK_0_SIZE];      // 0000–3FFF
@@ -23,16 +25,19 @@ typedef struct Memory {
     uint8_t tima_reload_delay;
 
     uint8_t * joypad_state;
+
+    // Pointer to parent struct
+    GB * gb;
 } Memory;
 
 // ROM loading
 
-int mem_rom_load(Memory * mem, const char * filename);
+Status mem_rom_load(Memory * mem, const char * filename);
 
 
 // Initialization
 
-void mem_init(Memory * mem);
+Status mem_init(Memory * mem, GB * gb);
 
 // -----------------
 // Memory read/write

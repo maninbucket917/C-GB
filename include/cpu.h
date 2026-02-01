@@ -5,6 +5,7 @@
 
 #include "memory.h"
 #include "ppu.h"
+#include "gb.h"
 
 typedef struct Memory Memory;
 typedef struct PPU PPU;
@@ -39,15 +40,13 @@ typedef struct CPU{
     // Counter of cycles remaining for current frame
     int frame_cycles;
 
-    // Pointers to PPU and memory
-    PPU * ppu;
-    Memory * mem;
-
+    // Pointer to parent struct
+    GB * gb;
 }CPU;
 
 // CPU initialization
 
-void cpu_init(CPU * cpu);
+Status cpu_init(CPU * cpu, GB * gb);
 
 // ----------------------------------
 // Register pair read/write functions
@@ -158,11 +157,7 @@ void cpu_handle_interrupts(CPU * cpu, Memory * mem);
 void cpu_step(CPU * cpu, Memory * mem);
 
 // Tick for timers, PPU, and frame cycles
-static inline void tick(CPU * cpu, int cycles) {
-    mem_timer_update(cpu -> mem, cycles);
-    ppu_step(cpu -> ppu, cpu -> mem, cycles);
-    cpu -> frame_cycles -= cycles;
-}
+void tick(CPU * cpu, int cycles);
 
 // Debug helpers
 void print_cpu_state(CPU * cpu, Memory * mem);

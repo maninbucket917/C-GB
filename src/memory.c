@@ -7,18 +7,18 @@
 #include "cpu.h"
 
 // Load the first 32KB of a ROM file [filename] into memory.
-int mem_rom_load(Memory * mem, const char * filename) {
+Status mem_rom_load(Memory * mem, const char * filename) {
 
     FILE * rom_file = fopen(filename, "rb");
     if (!rom_file) {
-        return -1;
+        return ERR_FILE_NOT_FOUND;
     }
 
     // Read ROM bank 0 (0000–3FFF)
     size_t read_bytes = fread(mem -> rom0, 1, ROM_BANK_0_SIZE, rom_file);
     if (read_bytes != ROM_BANK_0_SIZE) {
         fclose(rom_file);
-        return -1;
+        return ERR_BAD_FILE;
     }
 
     // Read ROM bank N (4000–7FFF)
@@ -30,11 +30,11 @@ int mem_rom_load(Memory * mem, const char * filename) {
     }
 
     fclose(rom_file);
-    return 0;
+    return OK;
 }
 
 // Initialize memory and set registers to post-BIOS values.
-void mem_init(Memory * mem) {
+Status mem_init(Memory * mem, GB * gb) {
 
     // Clear memory to 0
     memset(mem, 0, sizeof(Memory));
@@ -74,6 +74,11 @@ void mem_init(Memory * mem) {
     // Timer counters
     mem -> div_internal = 0;
 
+    // Set parent pointer
+    mem -> gb = gb;
+    if (mem -> gb == NULL) return ERR_NO_PARENT;
+
+    return OK;
 }
 
 // Read a 16-bit value from memory starting at [addr].

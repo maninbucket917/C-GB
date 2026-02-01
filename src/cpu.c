@@ -1,16 +1,14 @@
 #include <stdio.h>
 
 #include "cpu.h"
-#include "memory.h"
 #include "opcodes.h"
-#include "ppu.h"
 
 /*
 cpu_init
 
-Set the CPU to post-BIOS state.
+Set the CPU to post-BIOS state. Also assigns GB parent pointer of CPU.
 */
-void cpu_init(CPU * cpu) {
+Status cpu_init(CPU * cpu, GB * gb) {
 
     cpu -> a = 0x01;
     cpu -> f = 0xB0;
@@ -33,6 +31,11 @@ void cpu_init(CPU * cpu) {
     cpu -> stopped = 0;
 
     cpu -> frame_cycles = 0;
+
+    cpu -> gb = gb;
+    if(cpu -> gb == NULL) return ERR_NO_PARENT;
+
+    return OK;
 }
 
 /*
@@ -54,8 +57,8 @@ void cpu_handle_interrupts(CPU *cpu, Memory *mem)
         return;
 
     // Interrupt acknowledge (atomic)
-    cpu->ime = 0;
-    cpu->halted = 0;
+    cpu -> ime = 0;
+    cpu -> halted = 0;
 
     // Highest priority first
     for (int i = 0; i < 5; i++) {
@@ -65,8 +68,8 @@ void cpu_handle_interrupts(CPU *cpu, Memory *mem)
             mem_write8(mem, 0xFF0F, IF & ~(1 << i));
 
             // Push PC (16-bit, high first)
-            push8(cpu, mem, cpu->pc >> 8);
-            push8(cpu, mem, cpu->pc & 0xFF);
+            push8(cpu, mem, cpu -> pc >> 8);
+            push8(cpu, mem, cpu -> pc & 0xFF);
 
             // Jump to interrupt vector
             static const uint16_t vectors[5] = {
@@ -77,7 +80,7 @@ void cpu_handle_interrupts(CPU *cpu, Memory *mem)
                 0x60  // Joypad
             };
 
-            cpu->pc = vectors[i];
+            cpu -> pc = vectors[i];
 
             // Interrupt handling cost
             tick(cpu, 20);
@@ -140,7 +143,7 @@ void cpu_step(CPU * cpu, Memory * mem) {
             return;
         }
 
-        cpu->halted = 0;
+        cpu -> halted = 0;
     }
 
     // Check for interrupts
@@ -172,6 +175,12 @@ void cpu_step(CPU * cpu, Memory * mem) {
     //print_cpu_state(cpu, mem);
 
     return;
+}
+
+void tick(CPU * cpu, int cycles) {
+    mem_timer_update(cpu -> gb -> mem, cycles);
+    ppu_step(cpu -> gb -> ppu, cpu -> gb -> mem, cycles);
+    cpu -> frame_cycles -= cycles;
 }
 
 /*

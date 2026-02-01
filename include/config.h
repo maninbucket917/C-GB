@@ -19,6 +19,7 @@ This file declares constants used by the system.
 
 #define BUTTON_RESET SDLK_F1
 #define BUTTON_PALETTE_SWAP SDLK_F2
+#define BUTTON_TURBO SDLK_F3
 
 // Screen size
 
@@ -30,10 +31,12 @@ This file declares constants used by the system.
 #define SCREEN_SCALING 3
 
 // Palette settings (Lightest -> Darkest)
+
 #define PALETTE_0 0xFFFFFFFF, 0xC0C0C0FF, 0x606060FF, 0x000000FF
 #define PALETTE_1 0x9BBC0FFF, 0x8BAC0FFF, 0x306230FF, 0x0F380FFF
+#define PALETTE_2 0xEF0000FF, 0xA40000FF, 0x550000FF, 0x000000FF
 
-#define NUM_PALETTES 2
+#define NUM_PALETTES 3
 #define DEFAULT_PALETTE 0
 
 // Memory sizes
@@ -65,5 +68,17 @@ This file declares constants used by the system.
 #define FLAG_N 0x40
 #define FLAG_H 0x20
 #define FLAG_C 0x10
+
+// Error codes
+typedef enum {
+    OK = 0,
+    ERR_BAD_ARGS,
+    ERR_NO_MEM,
+    ERR_SDL_NOT_INITIALIZED,
+    ERR_BAD_FILE,
+    ERR_FILE_NOT_FOUND,
+    ERR_BAD_OPCODE,
+    ERR_NO_PARENT
+} Status;
 
 #endif

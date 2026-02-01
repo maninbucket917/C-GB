@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
+#include "config.h"
+#include "gb.h"
+
 typedef struct Memory Memory;
 
 typedef struct PPU{
@@ -29,6 +32,9 @@ typedef struct PPU{
     // Active palette ID
     uint8_t palette_id;
 
+    // Pointer to parent struct
+    GB * gb;
+
 } PPU;
 
 typedef struct Sprite{
@@ -51,7 +57,7 @@ typedef struct Sprite{
 // Initialization
 // --------------
 
-void ppu_init(PPU * ppu);
+Status ppu_init(PPU * ppu, GB * gb);
 void ppu_reset(PPU * ppu);
 
 // -------

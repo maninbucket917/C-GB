@@ -5,7 +5,7 @@
 #include "memory.h"
 #include "config.h"
 
-const uint32_t palettes[NUM_PALETTES][4] = {{PALETTE_0}, {PALETTE_1}};
+const uint32_t palettes[NUM_PALETTES][4] = {{PALETTE_0}, {PALETTE_1}, {PALETTE_2}};
 
 /*
 gb_palette
@@ -86,7 +86,7 @@ ppu_init
 
 Initialize the PPU and create all necessary SDL components.
 */
-void ppu_init(PPU * ppu) {
+Status ppu_init(PPU * ppu, GB * gb) {
     SDL_Init(SDL_INIT_VIDEO);
 
     ppu_reset(ppu);
@@ -94,6 +94,13 @@ void ppu_init(PPU * ppu) {
     ppu -> window = SDL_CreateWindow("C-GB", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * SCREEN_SCALING, 144 * SCREEN_SCALING, SDL_WINDOW_SHOWN);
     ppu -> renderer = SDL_CreateRenderer(ppu -> window, -1, SDL_RENDERER_ACCELERATED);
     ppu -> texture = SDL_CreateTexture(ppu -> renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+    if(!ppu -> window || !ppu -> renderer || !ppu -> texture) return ERR_SDL_NOT_INITIALIZED;
+
+    ppu -> gb = gb;
+    if (ppu -> gb == NULL) return ERR_NO_PARENT;
+
+    return OK;
 }
 
 /*

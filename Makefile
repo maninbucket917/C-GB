@@ -7,8 +7,8 @@ OBJ_DIR = obj
 INC_DIR = include
 BIN_DIR = bin
 
-SOURCES = $(SRC_DIR)/main.c $(SRC_DIR)/cpu.c $(SRC_DIR)/memory.c $(SRC_DIR)/opcodes.c $(SRC_DIR)/ppu.c
-OBJECTS = $(OBJ_DIR)/main.o $(OBJ_DIR)/cpu.o $(OBJ_DIR)/memory.o $(OBJ_DIR)/opcodes.o $(OBJ_DIR)/ppu.o
+SOURCES = $(SRC_DIR)/main.c $(SRC_DIR)/cpu.c $(SRC_DIR)/memory.c $(SRC_DIR)/opcodes.c $(SRC_DIR)/ppu.c $(SRC_DIR)/gb.c
+OBJECTS = $(OBJ_DIR)/main.o $(OBJ_DIR)/cpu.o $(OBJ_DIR)/memory.o $(OBJ_DIR)/opcodes.o $(OBJ_DIR)/ppu.o $(OBJ_DIR)/gb.o
 EXEC = $(BIN_DIR)/C-GB
 
 all: $(EXEC)
@@ -34,6 +34,10 @@ $(OBJ_DIR)/opcodes.o: $(SRC_DIR)/opcodes.c $(INC_DIR)/opcodes.h $(INC_DIR)/confi
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/ppu.o: $(SRC_DIR)/ppu.c $(INC_DIR)/ppu.h $(INC_DIR)/config.h
+	@mkdir -p $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/gb.o: $(SRC_DIR)/gb.c $(INC_DIR)/gb.h $(INC_DIR)/config.h
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 

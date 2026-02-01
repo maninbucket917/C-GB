@@ -1,9 +1,9 @@
 # C-GB
 
-A basic Gameboy emulator project written in C.
+A Gameboy emulator project written in C, focused on high levels of accuracy.
 
 ***NOTE:***
-Currently, no MBCs are implemented, so only 32KB ROMs will run.
+MBCs are not yet implemented, so only 32KB ROMs are supported at the moment.
 
 ## Controls
 
@@ -23,8 +23,9 @@ Additional function keys:
 |:----:|:----------:|
 |F1    |Reset       |
 |F2    |Palette swap|
+|F3    |Turbo mode  |
 
-The controls and the default palette may be changed in `/include/config.h`.
+The keybinds and the default palette may be changed in `/include/config.h`.
 
 ## Compiling & Running
 
@@ -42,6 +43,16 @@ To run C-GB with a specific ROM, run:
 `./bin/C-GB path/to/rom.gb`.
 
 ## Version History
+
+### V 0.25
+
+- Improved code cohesiveness by adding central GB struct and reducing cross-module dependency
+
+- Improved error handling by adding status to certain functions
+
+- Added turbo mode hotkey
+
+- Added all-red colour palette option inspired by the Virtual Boy
 
 ### V 0.24
 

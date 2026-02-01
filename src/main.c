@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "gb.h"
 #include "cpu.h"
 #include "memory.h"
 #include "ppu.h"
@@ -8,37 +9,41 @@
 
 int main(int argc, char *argv[]) {
 
-    // Argument check
-    if (argc != 2) {
-        printf("Usage: %s path/to/rom.gb\n", argv[0]);
-        return 1;
-    }
-
-    // SDL init
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS) != 0) {
-        printf("SDL_Init failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
     // Initialize core components
+    GB gb;
     CPU cpu;
     PPU ppu;
     Memory mem;
 
-    cpu_init(&cpu);
-    ppu_init(&ppu);
-    mem_init(&mem);
+    Status status;
 
-    cpu.ppu = &ppu;
-    cpu.mem = &mem;
+    // Argument check
+    if (argc != 2) {
+        printf("Usage: %s path/to/rom.gb\n", argv[0]);
+        return ERR_BAD_ARGS;
+    }
+
+    // SDL init
+    status = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS);
+    if (status != OK) {
+        printf("SDL_Init failed: %s\n", SDL_GetError());
+        return status;
+    }
+
+    status = GB_init(&gb, &cpu, &ppu, &mem);
+    if (status != OK) {
+        printf("System initialization error.\n");
+        return status;
+    }
 
     uint8_t joypad_state = 0xFF;
-    mem.joypad_state = &joypad_state;
+    gb.mem -> joypad_state = &joypad_state;
 
     // Load ROM
-    if (mem_rom_load(&mem, argv[1]) == -1) {
+    status = mem_rom_load(gb.mem, argv[1]);
+    if (status != OK) {
         printf("Failed to read ROM: %s\n", argv[1]);
-        return 1;
+        return status;
     }
 
     // Timing constants
@@ -51,6 +56,7 @@ int main(int argc, char *argv[]) {
     int fps_frames = 0;
     double fps = 0.0;
     char title[128];
+    int turbo = 0;
 
     SDL_Event event;
     int running = 1;
@@ -85,26 +91,25 @@ int main(int argc, char *argv[]) {
                         if(event.key.repeat || !pressed) break;
 
                         // Reset state
-                        cpu_init(&cpu);
-                        mem_init(&mem);
-                        ppu_reset(&ppu);
-                        cpu.ppu = &ppu;
-                        cpu.mem = &mem;
-                        mem.joypad_state = &joypad_state;
+                        cpu_init(gb.cpu, &gb);
+                        mem_init(gb.mem, &gb);
+                        ppu_reset(gb.ppu);
+                        gb.mem -> joypad_state = &joypad_state;
 
                         // Reload ROM
-                        mem_rom_load(&mem, argv[1]);
+                        mem_rom_load(gb.mem, argv[1]);
 
                         break;
-                    case BUTTON_PALETTE_SWAP: if(event.key.repeat || !pressed) break; ppu_palette_swap(&ppu); break;
+                    case BUTTON_PALETTE_SWAP: if(event.key.repeat || !pressed) break; ppu_palette_swap(gb.ppu); break;
+                    case BUTTON_TURBO: if(event.key.repeat || !pressed) break; turbo ^= 1; break;
                 }
             }
         }
 
         // Emulate 1 frame
-        cpu.frame_cycles = CYCLES_PER_FRAME;
-        while (cpu.frame_cycles > 0) {
-            cpu_step(&cpu, &mem);
+        gb.cpu -> frame_cycles = CYCLES_PER_FRAME;
+        while (gb.cpu -> frame_cycles > 0) {
+            cpu_step(gb.cpu, gb.mem);
         }
 
         // Update FPS counter
@@ -115,26 +120,29 @@ int main(int argc, char *argv[]) {
         if (fps_elapsed >= 1.0) {
             fps = fps_frames / fps_elapsed;
             snprintf(title, sizeof(title), "C-GB | %.2f FPS", fps);
-            SDL_SetWindowTitle(ppu.window, title);
+            SDL_SetWindowTitle(gb.ppu -> window, title);
 
             fps_frames = 0;
             fps_timer = now_counter;
         }
 
-        // Limit performance to ~59.7 FPS
+        // Limit performance to ~59.7 FPS when not in turbo mode
         double now = (double)(now_counter - start_counter) / perf_freq;
-        if (now < next_frame_time) {
-            double delay = next_frame_time - now;
-            SDL_Delay((uint32_t)(delay * 1000.0));
+        if (!turbo) {
+            if (now < next_frame_time) {
+                double delay = next_frame_time - now;
+                SDL_Delay((uint32_t)(delay * 1000.0));
+            }
+            next_frame_time += FRAME_TIME;
+        } else {
+            next_frame_time = now;
         }
-
-        next_frame_time += FRAME_TIME;
     }
 
     // Cleanup
-    SDL_DestroyTexture(ppu.texture);
-    SDL_DestroyRenderer(ppu.renderer);
-    SDL_DestroyWindow(ppu.window);
+    SDL_DestroyTexture(gb.ppu -> texture);
+    SDL_DestroyRenderer(gb.ppu -> renderer);
+    SDL_DestroyWindow(gb.ppu -> window);
     SDL_Quit();
 
     return 0;
