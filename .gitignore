@@ -1,0 +1,11 @@
+bin/
+obj/
+mooneye/
+.vscode/
+roms/
+tests/
+saves/
+*.o
+*.gb
+*.GB
+.devcontainer/
