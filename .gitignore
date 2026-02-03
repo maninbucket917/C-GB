@@ -9,3 +9,4 @@ saves/
 *.gb
 *.GB
 .devcontainer/
+.clang-format

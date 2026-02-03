@@ -24,6 +24,7 @@ Additional function keys:
 |F1    |Reset       |
 |F2    |Palette swap|
 |F3    |Turbo mode  |
+|F4    |Toggle pause|
 
 The keybinds and the default palette may be changed in `/include/config.h`.
 
@@ -64,6 +65,16 @@ blargg CPU tests: Passed
 <img width="480" height="430" alt="image" src="https://github.com/user-attachments/assets/f88f5f22-54bc-4930-9a6b-c2d4f82762a0" />
 
 ## Version History
+
+### V 0.26
+
+- Greatly improved code readability by creating standard with clang-format
+
+- Improved performance by reducing per frame overhead in main loop
+
+- Added pause hotkey
+
+- Moved input and toggles to central GB struct for improved modularity
 
 ### V 0.25
 
