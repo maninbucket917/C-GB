@@ -20,6 +20,7 @@ This file declares constants used by the system.
 #define BUTTON_RESET SDLK_F1
 #define BUTTON_PALETTE_SWAP SDLK_F2
 #define BUTTON_TURBO SDLK_F3
+#define BUTTON_PAUSE SDLK_F4
 
 // Screen size
 
@@ -43,14 +44,14 @@ This file declares constants used by the system.
 
 #define ROM_BANK_0_SIZE 0x4000   // 16 KB (0000 - 3FFF)
 #define ROM_BANK_N_SIZE 0x4000   // 16 KB (4000 - 7FFF)
-#define VRAM_SIZE 0x2000   // 8 KB (8000 - 9FFF)
-#define ERAM_SIZE 0x2000   // 8 KB (A000 - BFFF)
-#define WRAM_BANK_0_SIZE 0x1000   // 4 KB (C000 - CFFF)
-#define WRAM_BANK_1_SIZE 0x1000   // 4 KB (D000 - DFFF)
-#define OAM_SIZE 0x00A0   // 160 bytes (FE00 - FE9F)
-#define UNUSED_SIZE 0x0060   // unusable region (FEA0–FEFF)
-#define IO_REGISTERS_SIZE 0x0080   // 128 bytes (FF00–FF7F)
-#define HRAM_SIZE 0x007F   // 127 bytes (FF80–FFFE)
+#define VRAM_SIZE 0x2000         // 8 KB (8000 - 9FFF)
+#define ERAM_SIZE 0x2000         // 8 KB (A000 - BFFF)
+#define WRAM_BANK_0_SIZE 0x1000  // 4 KB (C000 - CFFF)
+#define WRAM_BANK_1_SIZE 0x1000  // 4 KB (D000 - DFFF)
+#define OAM_SIZE 0x00A0          // 160 bytes (FE00 - FE9F)
+#define UNUSED_SIZE 0x0060       // unusable region (FEA0–FEFF)
+#define IO_REGISTERS_SIZE 0x0080 // 128 bytes (FF00–FF7F)
+#define HRAM_SIZE 0x007F         // 127 bytes (FF80–FFFE)
 
 // Number of opcodes
 
@@ -59,8 +60,8 @@ This file declares constants used by the system.
 // Frame timing constants
 
 #define CYCLES_PER_FRAME 70224
-#define GB_FPS 4194304.0 / (CYCLES_PER_FRAME)
-#define FRAME_TIME 1.0 / (GB_FPS)
+#define GB_FPS 59.7275005696            // 4194304.0 / 70224
+#define FRAME_TIME 0.016742706298828125 // 1.0 / 59.7275005696
 
 // Flag constants
 

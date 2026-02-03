@@ -1,16 +1,17 @@
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
-#include "ppu.h"
-#include "memory.h"
 #include "config.h"
+#include "memory.h"
+#include "ppu.h"
 
 const uint32_t palettes[NUM_PALETTES][4] = {{PALETTE_0}, {PALETTE_1}, {PALETTE_2}};
 
 /*
 gb_palette
 
-Return the uint32_t corresponding to colour [colour] of the active palette [palette_id].
+Return the uint32_t corresponding to colour [colour] of the active palette
+[palette_id].
 */
 static inline uint32_t gb_palette(uint8_t palette_id, uint8_t colour) {
     return palettes[palette_id][colour & 3];
@@ -21,11 +22,11 @@ ppu_stat_lyc_check
 
 Request STAT interrupts if ly == lyc.
 */
-static inline void ppu_stat_lyc_check(PPU * ppu, Memory * mem) {
+static inline void ppu_stat_lyc_check(PPU *ppu, Memory *mem) {
     uint8_t stat = mem_read8(mem, 0xFF41);
-    uint8_t lyc  = mem_read8(mem, 0xFF45);
+    uint8_t lyc = mem_read8(mem, 0xFF45);
 
-    if (ppu -> ly == lyc) {
+    if (ppu->ly == lyc) {
         // Set coincidence flag
         stat |= 0x04;
         mem_write8(mem, 0xFF41, stat);
@@ -45,9 +46,11 @@ static inline void ppu_stat_lyc_check(PPU * ppu, Memory * mem) {
 /*
 ppu_read_tile_pixel
 
-Return the colour of the pixel specified by [tiledata_unsigned], [tilemap], [x], and [y].
+Return the colour of the pixel specified by [tiledata_unsigned], [tilemap], [x],
+and [y].
 */
-static inline uint8_t ppu_read_tile_pixel(Memory * mem, int tiledata_unsigned, uint16_t tilemap, uint16_t x, uint16_t y) {
+static inline uint8_t ppu_read_tile_pixel(Memory *mem, int tiledata_unsigned, uint16_t tilemap,
+                                          uint16_t x, uint16_t y) {
 
     // Get tile row and column
     uint16_t tile_row = y >> 3;
@@ -72,8 +75,10 @@ static inline uint8_t ppu_read_tile_pixel(Memory * mem, int tiledata_unsigned, u
     return ((b2 >> bit) & 1) << 1 | ((b1 >> bit) & 1);
 }
 
-static inline uint8_t ppu_read_sprite_pixel(Memory * mem, uint16_t tile_addr, uint8_t x, uint8_t y, bool xflip) {
-    if (xflip) x = 7 - x;
+static inline uint8_t ppu_read_sprite_pixel(Memory *mem, uint16_t tile_addr, uint8_t x, uint8_t y,
+                                            bool xflip) {
+    if (xflip)
+        x = 7 - x;
 
     uint8_t b1 = mem_read8(mem, tile_addr + ((y & 7) << 1));
     uint8_t b2 = mem_read8(mem, tile_addr + ((y & 7) << 1) + 1);
@@ -86,19 +91,23 @@ ppu_init
 
 Initialize the PPU and create all necessary SDL components.
 */
-Status ppu_init(PPU * ppu, GB * gb) {
+Status ppu_init(PPU *ppu, GB *gb) {
     SDL_Init(SDL_INIT_VIDEO);
 
     ppu_reset(ppu);
 
-    ppu -> window = SDL_CreateWindow("C-GB", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * SCREEN_SCALING, 144 * SCREEN_SCALING, SDL_WINDOW_SHOWN);
-    ppu -> renderer = SDL_CreateRenderer(ppu -> window, -1, SDL_RENDERER_ACCELERATED);
-    ppu -> texture = SDL_CreateTexture(ppu -> renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+    ppu->window = SDL_CreateWindow("C-GB", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                   160 * SCREEN_SCALING, 144 * SCREEN_SCALING, SDL_WINDOW_SHOWN);
+    ppu->renderer = SDL_CreateRenderer(ppu->window, -1, SDL_RENDERER_ACCELERATED);
+    ppu->texture = SDL_CreateTexture(ppu->renderer, SDL_PIXELFORMAT_RGBA8888,
+                                     SDL_TEXTUREACCESS_STREAMING, 160, 144);
 
-    if(!ppu -> window || !ppu -> renderer || !ppu -> texture) return ERR_SDL_NOT_INITIALIZED;
+    if (!ppu->window || !ppu->renderer || !ppu->texture)
+        return ERR_SDL_NOT_INITIALIZED;
 
-    ppu -> gb = gb;
-    if (ppu -> gb == NULL) return ERR_NO_PARENT;
+    ppu->gb = gb;
+    if (ppu->gb == NULL)
+        return ERR_NO_PARENT;
 
     return OK;
 }
@@ -108,15 +117,15 @@ ppu_reset
 
 Reset the PPU to initial power-on state without creating new SDL components.
 */
-void ppu_reset(PPU * ppu) {
-    ppu -> dot = 0;
-    ppu -> ly = 0;
-    ppu -> mode = 2;
+void ppu_reset(PPU *ppu) {
+    ppu->dot = 0;
+    ppu->ly = 0;
+    ppu->mode = 2;
 
-    ppu -> window_line = 0;
-    ppu -> window_drawn = 0;
+    ppu->window_line = 0;
+    ppu->window_drawn = 0;
 
-    ppu -> palette_id = DEFAULT_PALETTE;
+    ppu->palette_id = DEFAULT_PALETTE;
 }
 
 /*
@@ -124,15 +133,15 @@ ppu_draw_tiles
 
 Draw the tiles on the current scanline at ly to the PPU framebuffer.
 */
-void ppu_draw_tiles(PPU * ppu, Memory * mem) {
+void ppu_draw_tiles(PPU *ppu, Memory *mem) {
 
     // Read registers
     uint8_t lcdc = mem_read8(mem, 0xFF40);
-    uint8_t ly   = ppu -> ly;
-    uint8_t scx  = mem_read8(mem, 0xFF43);
-    uint8_t scy  = mem_read8(mem, 0xFF42);
-    uint8_t wx   = mem_read8(mem, 0xFF4B);
-    uint8_t wy   = mem_read8(mem, 0xFF4A);
+    uint8_t ly = ppu->ly;
+    uint8_t scx = mem_read8(mem, 0xFF43);
+    uint8_t scy = mem_read8(mem, 0xFF42);
+    uint8_t wx = mem_read8(mem, 0xFF4B);
+    uint8_t wy = mem_read8(mem, 0xFF4A);
 
     // Check for background and window enable bits
     bool bg_enable = lcdc & 0x01;
@@ -156,15 +165,15 @@ void ppu_draw_tiles(PPU * ppu, Memory * mem) {
 
         if (win_enable && ly >= wy && x >= (int)wx - 7) {
             uint16_t wx_x = x - ((int)wx - 7);
-            uint16_t wy_y = ppu -> window_line;
+            uint16_t wy_y = ppu->window_line;
             bg_colour = ppu_read_tile_pixel(mem, unsigned_tiles, win_map, wx_x, wy_y);
-            ppu -> window_drawn = 1;
+            ppu->window_drawn = 1;
         }
 
         // Check palette
         uint8_t bgp = mem_read8(mem, 0xFF47);
         uint8_t mapped_colour = (bgp >> (bg_colour * 2)) & 0x03;
-        ppu -> framebuffer[ly * SCREEN_WIDTH + x] = gb_palette(ppu -> palette_id, mapped_colour);
+        ppu->framebuffer[ly * SCREEN_WIDTH + x] = gb_palette(ppu->palette_id, mapped_colour);
     }
 }
 
@@ -173,25 +182,26 @@ ppu_draw_sprites
 
 Draw the sprites on the current scanline at ly to the PPU framebuffer.
 */
-void ppu_draw_sprites(PPU * ppu, Memory * mem) {
+void ppu_draw_sprites(PPU *ppu, Memory *mem) {
 
     uint8_t lcdc = mem_read8(mem, 0xFF40);
 
     // Check if sprites are enabled
-    if (!(lcdc & 0x02)) return;
+    if (!(lcdc & 0x02))
+        return;
 
-    uint8_t ly = ppu -> ly;
+    uint8_t ly = ppu->ly;
 
     // 8x16 sprite
     bool tall_sprites = lcdc & 0x04;
     uint8_t height = tall_sprites ? 16 : 8;
 
     // Array for sprites
-    Sprite line_sprites [10];
+    Sprite line_sprites[10];
 
     // Populate line_sprites array
     uint8_t drawn = 0;
-    for(uint8_t i = 0; i < 40 && drawn < 10; i++){
+    for (uint8_t i = 0; i < 40 && drawn < 10; i++) {
 
         // Fetch address of sprite in OAM
         uint16_t addr = 0xFE00 + (i * 4);
@@ -203,14 +213,12 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
         uint8_t attr = mem_read8(mem, addr + 3);
 
         // Check that sprite line is onscreen
-        if(ly < sprite_y || ly >= sprite_y + height) continue;
+        if (ly < sprite_y || ly >= sprite_y + height)
+            continue;
 
         // Create Sprite and add it to array
-        line_sprites[drawn] = (Sprite){
-            i, sprite_y, sprite_x, tile, attr
-        };
+        line_sprites[drawn] = (Sprite){i, sprite_y, sprite_x, tile, attr};
         drawn++;
-
     }
 
     // Sort sprites by X-value, then by OAM order
@@ -236,7 +244,7 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
     }
 
     // Draw all sprites on current line from right to left
-    for(int i = drawn - 1; i >= 0; i--){
+    for (int i = drawn - 1; i >= 0; i--) {
 
         // Get sprite attributes
         Sprite sprite = line_sprites[i];
@@ -250,7 +258,8 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
 
         // Get line and apply vertical flip
         int line = ly - sprite.y;
-        if(yflip) line = height - 1 - line;
+        if (yflip)
+            line = height - 1 - line;
 
         // Get tile index
         uint16_t tile_index = sprite.tile;
@@ -272,33 +281,37 @@ void ppu_draw_sprites(PPU * ppu, Memory * mem) {
             int pixel_x = sprite.x + x;
 
             // Don't draw off the edge of the screen
-            if (pixel_x < 0 || pixel_x >= SCREEN_WIDTH) continue;
+            if (pixel_x < 0 || pixel_x >= SCREEN_WIDTH)
+                continue;
 
             // Get mapped colour of sprite pixel
             uint8_t colour = ppu_read_sprite_pixel(mem, tile_addr, x, line, xflip);
 
             // Don't draw transparent pixels
-            if (colour == 0) continue;
+            if (colour == 0)
+                continue;
 
             // If priority is set, only draw over bg colour 0
             if (priority) {
-                uint32_t bg = ppu -> framebuffer[ly * SCREEN_WIDTH + pixel_x];
-                if (bg != gb_palette(ppu -> palette_id, 0)) continue;
+                uint32_t bg = ppu->framebuffer[ly * SCREEN_WIDTH + pixel_x];
+                if (bg != gb_palette(ppu->palette_id, 0))
+                    continue;
             }
 
             // Remap colour to obj_palette and update framebuffer
             uint8_t mapped = (obj_palette >> (colour << 1)) & 3;
-            ppu -> framebuffer[ly * SCREEN_WIDTH + pixel_x] = gb_palette(ppu -> palette_id, mapped);
+            ppu->framebuffer[ly * SCREEN_WIDTH + pixel_x] = gb_palette(ppu->palette_id, mapped);
         }
     }
 }
 
-// Update PPU mode and update lower 2 bits of STAT register with new PPU mode, then checks for STAT interrupts
-static inline void ppu_mode_change(PPU * ppu, Memory * mem, uint8_t mode){
-    ppu -> mode = mode;
-    uint8_t stat = mem -> io[0x41] & 0xF8;
-    stat |= (ppu -> mode & 0x03);
-    mem -> io[0x41] = stat | 0x80;
+// Update PPU mode and update lower 2 bits of STAT register with new PPU mode,
+// then checks for STAT interrupts
+static inline void ppu_mode_change(PPU *ppu, Memory *mem, uint8_t mode) {
+    ppu->mode = mode;
+    uint8_t stat = mem->io[0x41] & 0xF8;
+    stat |= (ppu->mode & 0x03);
+    mem->io[0x41] = stat | 0x80;
 }
 
 /*
@@ -306,7 +319,7 @@ ppu_step
 
 Step through [cycles] cycles of the PPU.
 */
-void ppu_step(PPU * ppu, Memory * mem, int cycles) {
+void ppu_step(PPU *ppu, Memory *mem, int cycles) {
 
     // Emulate one cycle at a time
     while (cycles--) {
@@ -314,94 +327,94 @@ void ppu_step(PPU * ppu, Memory * mem, int cycles) {
         // If LCDC bit 7 is active, reset dot and ly, and set ppu mode to 0 (Hblank)
         uint8_t lcdc = mem_read8(mem, 0xFF40);
         if (!(lcdc & 0x80)) {
-            ppu -> dot = 0;
-            ppu -> ly = 0;
+            ppu->dot = 0;
+            ppu->ly = 0;
             mem_write8(mem, 0xFF44, 0);
             ppu_mode_change(ppu, mem, 0);
             continue;
         }
 
         // Each cycle increments dot counter by 1
-        ppu -> dot++;
+        ppu->dot++;
 
-        switch (ppu -> mode) {
+        switch (ppu->mode) {
 
-            case 0: // HBlank
+        case 0: // HBlank
 
-                if (ppu -> dot >= 456) {
-
-                    // Increment LY at end of scanline
-                    ppu -> dot = 0;
-                    ppu -> ly++;
-                    mem -> io [0x44] = ppu -> ly;
-                    ppu_stat_lyc_check(ppu, mem);
-
-                    if (ppu -> ly == 144) {
-                        // Enter VBlank
-                        ppu_mode_change(ppu, mem, 1);
-
-                        // Request VBlank interrupt
-                        uint8_t IF = mem_read8(mem, 0xFF0F);
-                        mem_write8(mem, 0xFF0F, IF | 0x01);
-
-                        // Present frame
-                        SDL_UpdateTexture(ppu -> texture, NULL, ppu -> framebuffer, SCREEN_WIDTH * sizeof(uint32_t));
-                        SDL_RenderClear(ppu -> renderer);
-                        SDL_RenderCopy(ppu -> renderer, ppu -> texture, NULL, NULL);
-                        SDL_RenderPresent(ppu -> renderer);
-
-                    } else {
-                        // Next scanline is OAM scan
-                        ppu_mode_change(ppu, mem, 2);
-                    }
-                }
-
-                break;
-
-            case 1: // VBlank
+            if (ppu->dot >= 456) {
 
                 // Increment LY at end of scanline
-                if (ppu -> dot >= 456) {
-                    ppu -> dot = 0;
-                    ppu -> ly++;
-                    mem -> io [0x44] = ppu -> ly;
+                ppu->dot = 0;
+                ppu->ly++;
+                mem->io[0x44] = ppu->ly;
+                ppu_stat_lyc_check(ppu, mem);
+
+                if (ppu->ly == 144) {
+                    // Enter VBlank
+                    ppu_mode_change(ppu, mem, 1);
+
+                    // Request VBlank interrupt
+                    uint8_t IF = mem_read8(mem, 0xFF0F);
+                    mem_write8(mem, 0xFF0F, IF | 0x01);
+
+                    // Present frame
+                    SDL_UpdateTexture(ppu->texture, NULL, ppu->framebuffer,
+                                      SCREEN_WIDTH * sizeof(uint32_t));
+                    SDL_RenderClear(ppu->renderer);
+                    SDL_RenderCopy(ppu->renderer, ppu->texture, NULL, NULL);
+                    SDL_RenderPresent(ppu->renderer);
+
+                } else {
+                    // Next scanline is OAM scan
+                    ppu_mode_change(ppu, mem, 2);
+                }
+            }
+
+            break;
+
+        case 1: // VBlank
+
+            // Increment LY at end of scanline
+            if (ppu->dot >= 456) {
+                ppu->dot = 0;
+                ppu->ly++;
+                mem->io[0x44] = ppu->ly;
+                ppu_stat_lyc_check(ppu, mem);
+
+                // Reset LY and start OAM scan
+                if (ppu->ly > 153) {
+                    ppu->ly = 0;
+                    ppu->window_line = 0;
                     ppu_stat_lyc_check(ppu, mem);
-
-                    // Reset LY and start OAM scan
-                    if (ppu -> ly > 153) {
-                        ppu -> ly = 0;
-                        ppu -> window_line = 0;
-                        ppu_stat_lyc_check(ppu, mem);
-                        ppu_mode_change(ppu, mem, 2);
-                        mem_write8(mem, 0xFF44, 0);
-                    }
+                    ppu_mode_change(ppu, mem, 2);
+                    mem_write8(mem, 0xFF44, 0);
                 }
-                break;
+            }
+            break;
 
-            case 2: // OAM scan
+        case 2: // OAM scan
 
-                // Change to drawing mode after 80 dots
-                if (ppu -> dot >= 80) {
-                    ppu_mode_change(ppu, mem, 3);
+            // Change to drawing mode after 80 dots
+            if (ppu->dot >= 80) {
+                ppu_mode_change(ppu, mem, 3);
+            }
+            break;
+
+        case 3: // Drawing
+
+            // Draw scanline at end of mode 3 and reset to HBlank
+            if (ppu->dot >= 252) {
+
+                ppu->window_drawn = 0;
+                ppu_draw_tiles(ppu, mem);
+                if (ppu->window_drawn) {
+                    ppu->window_line++;
                 }
-                break;
-
-            case 3: // Drawing
-            
-                // Draw scanline at end of mode 3 and reset to HBlank
-                if (ppu -> dot >= 252) {
-
-                    ppu -> window_drawn = 0;
-                    ppu_draw_tiles(ppu, mem);
-                    if(ppu -> window_drawn){
-                        ppu -> window_line++;
-                    }
-                    ppu_draw_sprites(ppu, mem);
-                    ppu_mode_change(ppu, mem, 0);
-                    ppu_stat_lyc_check(ppu, mem);
-                }
-                break;
-
+                ppu_draw_sprites(ppu, mem);
+                ppu_mode_change(ppu, mem, 0);
+                ppu_stat_lyc_check(ppu, mem);
+            }
+            break;
         }
     }
 }
@@ -411,7 +424,7 @@ ppu_palette_swap
 
 Toggle to the next selectable palette.
 */
-void ppu_palette_swap(PPU * ppu) {
-    ppu -> palette_id ++;
-    ppu -> palette_id %= NUM_PALETTES;
-} 
+void ppu_palette_swap(PPU *ppu) {
+    ppu->palette_id++;
+    ppu->palette_id %= NUM_PALETTES;
+}
