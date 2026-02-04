@@ -35,9 +35,11 @@ Status GB_init(GB *gb, CPU *cpu, PPU *ppu, Memory *mem) {
         return status;
     }
 
-    // Initialize joypad state
+    // Initialize state
     gb->joypad_state = 0xFF;
     gb->rom_loaded = 0;
+    gb->turbo = 0;
+    gb->paused = 0;
 
     return OK;
 }

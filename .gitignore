@@ -1,12 +1,14 @@
 bin/
 obj/
 mooneye/
-.vscode/
 roms/
 tests/
 saves/
+windows-libs/
+.vscode/
+.devcontainer/
 *.o
 *.gb
 *.GB
-.devcontainer/
+*.sh
 .clang-format
