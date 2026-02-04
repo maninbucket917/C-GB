@@ -18,7 +18,7 @@ op_ld_r_r
 Load an 8-bit value [src] into an 8-bit destination [dest].
 Flags: - - - -
 */
-void op_ld_r_n(uint8_t *dest, uint8_t src) {
+static inline void op_ld_r_n(uint8_t *dest, uint8_t src) {
     *dest = src;
 }
 
@@ -28,7 +28,7 @@ op_ld_rr_d16
 Load an immediate 16-bit value into the two 8-bit destinations [high] and [low].
 Flags: - - - -
 */
-void op_ld_rr_d16(CPU *cpu, Memory *mem, uint8_t *high, uint8_t *low) {
+static inline void op_ld_rr_d16(CPU *cpu, Memory *mem, uint8_t *high, uint8_t *low) {
     uint8_t lo = get_imm8(cpu, mem);
     uint8_t hi = get_imm8(cpu, mem);
     *high = hi;
@@ -41,7 +41,7 @@ op_jr
 Jump PC by the signed 8-bit value of [src] if [condition] is true.
 Flags: - - - -
 */
-uint8_t op_jr(CPU *cpu, uint8_t src, uint8_t condition) {
+static inline uint8_t op_jr(CPU *cpu, uint8_t src, uint8_t condition) {
     int8_t offset = (int8_t)src;
     if (condition) {
         cpu->pc += offset;
@@ -56,7 +56,7 @@ op_cp
 Compare the 8-bit register a to [src].
 Flags: Z 1 H CY
 */
-void op_cp(CPU *cpu, uint8_t src) {
+static inline void op_cp(CPU *cpu, uint8_t src) {
     set_flag(cpu, FLAG_Z, cpu->a == src);
     set_flag(cpu, FLAG_N, 1);
     set_flag(cpu, FLAG_H, (cpu->a & 0x0F) < (src & 0x0F));
@@ -69,7 +69,7 @@ op_dec_r
 Decrement the 8-bit value [src] by 1.
 Flags: Z 1 H -
 */
-void op_dec_r(CPU *cpu, uint8_t *src) {
+static inline void op_dec_r(CPU *cpu, uint8_t *src) {
     uint8_t old = *src;
     uint8_t res = old - 1;
     *src = res;
@@ -84,7 +84,7 @@ op_inc_r
 Increment the 8-bit value [src] by 1.
 Flags: Z 0 H -
 */
-void op_inc_r(CPU *cpu, uint8_t *src) {
+static inline void op_inc_r(CPU *cpu, uint8_t *src) {
     uint8_t old = *src;
     uint8_t res = old + 1;
     *src = res;
@@ -99,7 +99,7 @@ op_call
 If [condition] evaluates to true, push the current PC onto the stack and set PC
 to the immediate 16-bit value. Flags: - - - -
 */
-uint8_t op_call(CPU *cpu, Memory *mem, uint8_t condition) {
+static inline uint8_t op_call(CPU *cpu, Memory *mem, uint8_t condition) {
     uint16_t addr = get_imm16(cpu, mem);
 
     if (!condition) {
@@ -119,7 +119,7 @@ op_ret
 If [condition] evaluates to true, set the PC to the 16-bit value popped off the
 stack. Flags: - - - -
 */
-uint8_t op_ret(CPU *cpu, Memory *mem, uint8_t condition) {
+static inline uint8_t op_ret(CPU *cpu, Memory *mem, uint8_t condition) {
     if (!condition) {
         return 8;
     }
@@ -135,7 +135,7 @@ op_or
 Set register a to the bitwise OR of a and [src].
 Flags: Z 0 0 0
 */
-void op_or(CPU *cpu, uint8_t src) {
+static inline void op_or(CPU *cpu, uint8_t src) {
     cpu->a |= src;
 
     set_flag(cpu, FLAG_Z, cpu->a == 0);
@@ -150,7 +150,7 @@ op_and
 Set register a to the bitwise AND of a and [src].
 Flags: Z 0 1 0
 */
-void op_and(CPU *cpu, uint8_t src) {
+static inline void op_and(CPU *cpu, uint8_t src) {
     cpu->a &= src;
 
     set_flag(cpu, FLAG_Z, cpu->a == 0);
@@ -165,7 +165,7 @@ op_xor
 Set register a to the bitwise XOR of a and [src].
 Flags: Z 0 0 0
 */
-void op_xor(CPU *cpu, uint8_t src) {
+static inline void op_xor(CPU *cpu, uint8_t src) {
     cpu->a ^= src;
 
     set_flag(cpu, FLAG_Z, cpu->a == 0);
@@ -180,7 +180,7 @@ op_sub
 Set register a to a - [src].
 Flags: Z 1 H CY
 */
-void op_sub(CPU *cpu, uint8_t src) {
+static inline void op_sub(CPU *cpu, uint8_t src) {
     uint8_t a = cpu->a;
 
     cpu->a = a - src;
@@ -197,7 +197,7 @@ op_daa
 Decimal adjust register a.
 Flags: Z - 0 CY
 */
-void op_daa(CPU *cpu) {
+static inline void op_daa(CPU *cpu) {
     uint8_t correction = 0;
     uint8_t set_carry = 0;
 
@@ -210,11 +210,7 @@ void op_daa(CPU *cpu) {
         set_carry = 1;
     }
 
-    if (get_flag(cpu, FLAG_N)) {
-        cpu->a -= correction;
-    } else {
-        cpu->a += correction;
-    }
+    cpu->a = get_flag(cpu, FLAG_N) ? (cpu->a - correction) : (cpu->a + correction);
 
     set_flag(cpu, FLAG_Z, cpu->a == 0);
     set_flag(cpu, FLAG_H, 0);
@@ -227,7 +223,7 @@ op_sbc
 Set register a to a - [src] - cy.
 Flags: Z 1 H CY
 */
-void op_sbc(CPU *cpu, uint8_t src) {
+static inline void op_sbc(CPU *cpu, uint8_t src) {
     uint8_t a = cpu->a;
     uint8_t carry = get_flag(cpu, FLAG_C);
 
@@ -245,7 +241,7 @@ op_adc
 Set register a to a + [src] + cy.
 Flags: Z 0 H CY
 */
-void op_adc(CPU *cpu, uint8_t src) {
+static inline void op_adc(CPU *cpu, uint8_t src) {
     uint8_t a = cpu->a;
     uint8_t carry = get_flag(cpu, FLAG_C);
 
@@ -263,7 +259,7 @@ op_add
 Set register a to a + [src].
 Flags: Z 0 H CY
 */
-void op_add(CPU *cpu, uint8_t src) {
+static inline void op_add(CPU *cpu, uint8_t src) {
     uint8_t a = cpu->a;
 
     cpu->a += src;
@@ -280,7 +276,7 @@ op_add_16
 Set register pair hl to hl + [src].
 Flags: - 0 H CY
 */
-void op_add_16(CPU *cpu, uint16_t src) {
+static inline void op_add_16(CPU *cpu, uint16_t src) {
     uint16_t hl = get_hl(cpu);
     set_hl(cpu, get_hl(cpu) + src);
 

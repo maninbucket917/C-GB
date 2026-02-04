@@ -112,8 +112,9 @@ static inline uint8_t mem_read8(Memory *mem, uint16_t addr) {
         }
 
         // Force bits 5-7 of IF to high
-        if (addr == 0xFF0F)
+        if (addr == 0xFF0F) {
             return 0xE0 | mem->io[0x0F];
+        }
         return mem->io[addr - 0xFF00];
     }
 
@@ -189,8 +190,9 @@ static inline void mem_write8(Memory *mem, uint16_t addr, uint8_t value) {
         }
 
         // Block writes to LY
-        if (addr == 0xFF44)
+        if (addr == 0xFF44) {
             return;
+        }
 
         // DMA transfer
         if (addr == 0xFF46) {
@@ -213,17 +215,14 @@ static inline void mem_write8(Memory *mem, uint16_t addr, uint8_t value) {
     }
 }
 
-uint16_t mem_read16(Memory *mem, uint16_t addr);
-void mem_write16(Memory *mem, uint16_t addr, uint16_t value);
-
-// Stack push/pop
+// Stack operations
 
 void push8(CPU *cpu, Memory *mem, uint8_t value);
 void push16(CPU *cpu, Memory *mem, uint16_t value);
 uint8_t pop8(CPU *cpu, Memory *mem);
 uint16_t pop16(CPU *cpu, Memory *mem);
 
-// Timer update
+// Timer
 
 void mem_timer_update(Memory *mem, int cycles);
 

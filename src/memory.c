@@ -1,12 +1,16 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "cpu.h"
 #include "memory.h"
 
-// Load the first 32KB of a ROM file [filename] into memory.
+/*
+mem_rom_load
+
+Load the first 32KB of a ROM file into ROM bank 0 and ROM bank N.
+Pads incomplete bank N reads with 0xFF.
+*/
 Status mem_rom_load(Memory *mem, const char *filename) {
 
     FILE *rom_file = fopen(filename, "rb");
@@ -33,8 +37,15 @@ Status mem_rom_load(Memory *mem, const char *filename) {
     return OK;
 }
 
-// Initialize memory and set registers to post-BIOS values.
+/*
+mem_init
+
+Clear memory, initialize IO registers to post-BIOS defaults, and attach the parent GB pointer.
+*/
 Status mem_init(Memory *mem, GB *gb) {
+    if (gb == NULL) {
+        return ERR_NO_PARENT;
+    }
 
     // Clear memory to 0
     memset(mem, 0, sizeof(Memory));
@@ -76,51 +87,54 @@ Status mem_init(Memory *mem, GB *gb) {
 
     // Set parent pointer
     mem->gb = gb;
-    if (mem->gb == NULL)
-        return ERR_NO_PARENT;
 
     return OK;
 }
 
-// Read a 16-bit value from memory starting at [addr].
-uint16_t mem_read16(Memory *mem, uint16_t addr) {
-    uint8_t low = mem_read8(mem, addr);
-    uint8_t high = mem_read8(mem, addr + 1);
-    return (high << 8) | low;
-}
+/*
+push8
 
-// Write a 16-bit value [value] in memory starting at [addr].
-void mem_write16(Memory *mem, uint16_t addr, uint16_t value) {
-    uint8_t low = value & 0xFF;
-    uint8_t high = (value >> 8) & 0xFF;
-    mem_write8(mem, addr, low);
-    mem_write8(mem, addr + 1, high);
-}
-
-// Push an 8-bit value [value] onto the stack.
+Push an 8-bit value onto the stack (pre-decrement SP).
+*/
 void push8(CPU *cpu, Memory *mem, uint8_t value) {
     mem_write8(mem, --cpu->sp, value);
 }
 
-// Push a 16-bit value [value] onto the stack.
+/*
+push16
+
+Push a 16-bit value onto the stack (high byte then low byte).
+*/
 void push16(CPU *cpu, Memory *mem, uint16_t value) {
     push8(cpu, mem, (value >> 8) & 0xFF);
     push8(cpu, mem, value & 0xFF);
 }
 
-// Pop an 8-bit value from the stack.
+/*
+pop8
+
+Pop an 8-bit value from the stack (post-increment SP).
+*/
 uint8_t pop8(CPU *cpu, Memory *mem) {
     return mem_read8(mem, cpu->sp++);
 }
 
-// Pop a 16-bit value from the stack.
+/*
+pop16
+
+Pop a 16-bit value from the stack (low byte then high byte).
+*/
 uint16_t pop16(CPU *cpu, Memory *mem) {
     uint8_t low = pop8(cpu, mem);
     uint8_t high = pop8(cpu, mem);
     return ((uint16_t)high << 8) | low;
 }
 
-// Update timer registers
+/*
+mem_timer_update
+
+Advance DIV/TIMA by [cycles], handle TIMA overflow and delayed reload.
+*/
 void mem_timer_update(Memory *mem, int cycles) {
 
     for (int i = 0; i < cycles; i++) {
@@ -165,8 +179,7 @@ void mem_timer_update(Memory *mem, int cycles) {
             int old_bit = (old_div >> bit) & 1;
             int new_bit = (mem->div_internal >> bit) & 1;
 
-            // Increment TIMA on falling edge of bit, and prepare for timer interrupt
-            // on overflow
+            // Increment TIMA on falling edge of bit, and prepare for timer interrupt on overflow
             if (old_bit && !new_bit) {
                 if (mem->io[0x05] == 0xFF) {
                     mem->io[0x05] = 0x00;

@@ -25,8 +25,9 @@ Additional function keys:
 |F2    |Palette swap|
 |F3    |Turbo mode  |
 |F4    |Toggle pause|
+|F11   |Toggle fullscreen|
 
-The keybinds and the default palette may be changed in `/include/config.h`.
+The keybinds and the default palettes may be changed in `/include/config.h`.
 
 ## Compiling & Running
 
@@ -41,14 +42,18 @@ To compile the source code, navigate to the root and run:
 `make`
 
 To run C-GB with a specific ROM, run:  
-`./bin/C-GB path/to/rom.gb`.
+`./bin/C-GB path/to/rom.gb`
+
+Alternatively, you can run C-GB without arguments:  
+`./bin/C-GB`
+
+This will open a blank window where you can drag and drop a .gb ROM file to load it. You can also drag and drop a new ROM at any time to reset and load it.
 
 ## Test ROM results
 
 dmg-acid2: Passed
 
 <img width="482" height="433" alt="image" src="https://github.com/user-attachments/assets/175c0aed-4b37-400f-bcd1-cbe838598c96" />
-<img width="480" height="434" alt="image" src="https://github.com/user-attachments/assets/5cf71b30-2746-49c6-a64f-f3eaed8ef635" />
 
 blargg CPU tests: Passed
 
@@ -65,6 +70,24 @@ blargg CPU tests: Passed
 <img width="480" height="430" alt="image" src="https://github.com/user-attachments/assets/f88f5f22-54bc-4930-9a6b-c2d4f82762a0" />
 
 ## Version History
+
+### V 0.30
+
+- Added drag-and-drop ROM support
+
+- Added three new colour palettes (Pocket Green, Sepia, and Light Blue)
+
+- Added fullscreen hotkey
+
+- Improved function comment headers to make purpose more clear
+
+- Improved performance by inlining opcode helper functions and using ternary operators for specific operations
+
+- Improved code readability and fixed descriptions for several functions
+
+- Fixed erroneously attempting to initialize SDL twice during initialization
+
+- Added more comprehesive error handling
 
 ### V 0.26
 

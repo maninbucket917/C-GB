@@ -44,13 +44,12 @@ typedef struct CPU {
     GB *gb;
 } CPU;
 
-// CPU initialization
+// Initialization
 
 Status cpu_init(CPU *cpu, GB *gb);
 
-// ----------------------------------
-// Register pair read/write functions
-// ----------------------------------
+// Register pair operations
+// (read/write/arithmetic on 16-bit register pairs)
 
 // Return the value of register pair af.
 static inline uint16_t get_af(CPU *cpu) {
@@ -110,14 +109,7 @@ static inline uint16_t get_hl_plus(CPU *cpu) {
     return value;
 }
 
-// Additional register pair functions
-
-uint16_t get_hl_minus(CPU *cpu);
-uint16_t get_hl_plus(CPU *cpu);
-
-// ---------------
-// Flag read/write
-// ---------------
+// Flag operations
 
 // Set the flag [flag] to [val].
 static inline void set_flag(CPU *cpu, uint8_t flag, uint8_t val) {
@@ -129,9 +121,7 @@ static inline uint8_t get_flag(CPU *cpu, uint8_t flag) {
     return (cpu->f & flag) != 0;
 }
 
-// ----------------
-// Helper functions
-// ----------------
+// Operand accessors
 
 // Return the next opcode to execute and increments the PC by 1.
 static inline uint8_t get_opcode(CPU *cpu, Memory *mem) {
@@ -150,16 +140,14 @@ static inline uint16_t get_imm16(CPU *cpu, Memory *mem) {
     return (high << 8) | low;
 }
 
-// Interrupt handler
+// Execution
+
 void cpu_handle_interrupts(CPU *cpu, Memory *mem);
-
-// Execution step
 void cpu_step(CPU *cpu, Memory *mem);
-
-// Tick for timers, PPU, and frame cycles
 void tick(CPU *cpu, int cycles);
 
-// Debug helpers
+// Debug
+
 void print_cpu_state(CPU *cpu, Memory *mem);
 
 #endif
