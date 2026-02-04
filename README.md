@@ -31,6 +31,12 @@ The keybinds and the default palettes may be changed in `/include/config.h`.
 
 ## Compiling & Running
 
+### Windows
+
+Download the latest release from the "Releases" section and unzip the file's contents.
+
+Double-click `C-GB.exe` to run the emulator, and drag a ROM file into the window to run it.
+
 ### Linux
 
 Dependencies:
@@ -48,6 +54,8 @@ Alternatively, you can run C-GB without arguments:
 `./bin/C-GB`
 
 This will open a blank window where you can drag and drop a .gb ROM file to load it. You can also drag and drop a new ROM at any time to reset and load it.
+
+Alternatively, the Windows executable in the "Releases" tab can be run safely with Wine.
 
 ## Test ROM results
 
@@ -73,6 +81,8 @@ blargg CPU tests: Passed
 
 ### V 0.30
 
+- Added Windows support
+  
 - Added drag-and-drop ROM support
 
 - Added three new colour palettes (Pocket Green, Sepia, and Light Blue)
