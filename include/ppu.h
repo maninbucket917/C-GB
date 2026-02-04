@@ -53,25 +53,16 @@ typedef struct Sprite {
     uint8_t attr;
 } Sprite;
 
-// --------------
 // Initialization
-// --------------
 
 Status ppu_init(PPU *ppu, GB *gb);
 void ppu_reset(PPU *ppu);
 
-// -------
-// Drawing
-// -------
-
-void ppu_draw_tiles(PPU *ppu, Memory *mem);
-void ppu_draw_sprites(PPU *ppu, Memory *mem);
+// Execution
 
 void ppu_step(PPU *ppu, Memory *mem, int cycles);
 
-// -------------
 // Miscellaneous
-// -------------
 
 void ppu_palette_swap(PPU *ppu);
 

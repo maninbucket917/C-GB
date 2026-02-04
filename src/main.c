@@ -3,7 +3,6 @@
 #include "cpu.h"
 #include "gb.h"
 #include "memory.h"
-#include "opcodes.h"
 #include "ppu.h"
 
 int main(int argc, char *argv[]) {
@@ -17,8 +16,9 @@ int main(int argc, char *argv[]) {
     Status status;
 
     // Argument check
-    if (argc != 2) {
-        printf("Usage: %s path/to/rom.gb\n", argv[0]);
+    if (argc > 2) {
+        printf("Usage: %s [path/to/rom.gb]\n", argv[0]);
+        printf("Or drag and drop a ROM file onto the window.\n");
         return ERR_BAD_ARGS;
     }
 
@@ -32,20 +32,26 @@ int main(int argc, char *argv[]) {
     status = GB_init(&gb, &cpu, &ppu, &mem);
     if (status != OK) {
         printf("System initialization error.\n");
+        SDL_Quit();
         return status;
     }
 
-    // Load ROM
-    status = mem_rom_load(gb.mem, argv[1]);
-    if (status != OK) {
-        printf("Failed to read ROM: %s\n", argv[1]);
-        return status;
+    // Load ROM if provided as argument
+    if (argc == 2) {
+        status = GB_load_rom(&gb, argv[1]);
+        if (status != OK) {
+            printf("Failed to read ROM: %s\n", argv[1]);
+            printf("Drag and drop a .gb file onto the window to load a ROM.\n");
+        } else {
+            printf("ROM loaded: %s\n", argv[1]);
+        }
+    } else {
+        printf("No ROM loaded. Drag and drop a .gb file onto the window.\n");
     }
 
     // Timing constants
     uint64_t perf_freq = SDL_GetPerformanceFrequency();
-    double perf_freq_inv = 1.0 / (double)perf_freq; // Precalculate inverse of perf_freq to avoid
-                                                    // doing extra division per frame
+    double perf_freq_inv = 1.0 / (double)perf_freq; // Precalculate inverse of perf_freq to avoid doing extra division per frame
     uint64_t start_counter = SDL_GetPerformanceCounter();
     double next_frame_time = 0.0;
 
@@ -57,6 +63,7 @@ int main(int argc, char *argv[]) {
 
     SDL_Event event;
     int running = 1;
+    int fullscreen = 0;
 
     // Main loop
     while (running) {
@@ -68,6 +75,21 @@ int main(int argc, char *argv[]) {
                 break;
             }
 
+            if (event.type == SDL_DROPFILE) {
+                char *dropped_file = event.drop.file;
+                printf("Loading ROM: %s\n", dropped_file);
+
+                // Load new ROM
+                status = GB_load_rom(&gb, dropped_file);
+                if (status != OK) {
+                    printf("Failed to load ROM: %s\n", dropped_file);
+                } else {
+                    printf("ROM loaded successfully\n");
+                }
+
+                SDL_free(dropped_file);
+            }
+
             if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
                 int pressed = (event.type == SDL_KEYDOWN);
 
@@ -75,104 +97,118 @@ int main(int argc, char *argv[]) {
 
                 // D-pad
                 case BUTTON_RIGHT:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x01) : (gb.joypad_state | 0x01);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x01) : (gb.joypad_state | 0x01);
                     break;
                 case BUTTON_LEFT:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x02) : (gb.joypad_state | 0x02);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x02) : (gb.joypad_state | 0x02);
                     break;
                 case BUTTON_UP:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x04) : (gb.joypad_state | 0x04);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x04) : (gb.joypad_state | 0x04);
                     break;
                 case BUTTON_DOWN:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x08) : (gb.joypad_state | 0x08);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x08) : (gb.joypad_state | 0x08);
                     break;
 
                 // Buttons
                 case BUTTON_A:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x10) : (gb.joypad_state | 0x10);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x10) : (gb.joypad_state | 0x10);
                     break;
                 case BUTTON_B:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x20) : (gb.joypad_state | 0x20);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x20) : (gb.joypad_state | 0x20);
                     break;
                 case BUTTON_SELECT:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x40) : (gb.joypad_state | 0x40);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x40) : (gb.joypad_state | 0x40);
                     break;
                 case BUTTON_START:
-                    gb.joypad_state =
-                        pressed ? (gb.joypad_state & ~0x80) : (gb.joypad_state | 0x80);
+                    gb.joypad_state = pressed ? (gb.joypad_state & ~0x80) : (gb.joypad_state | 0x80);
                     break;
 
                 // Extra functions
                 case BUTTON_RESET:
 
-                    if (event.key.repeat || !pressed)
+                    if (event.key.repeat || !pressed) {
                         break;
+                    }
 
-                    // Reset state
+                    if (!gb.rom_loaded) {
+                        printf("No ROM loaded to reset\n");
+                        break;
+                    }
+
+                    // Reset emulator state
                     cpu_init(gb.cpu, &gb);
                     mem_init(gb.mem, &gb);
                     ppu_reset(gb.ppu);
 
-                    // Reload ROM
-                    mem_rom_load(gb.mem, argv[1]);
+                    printf("Emulator reset\n");
 
                     break;
                 case BUTTON_PALETTE_SWAP:
-                    if (event.key.repeat || !pressed)
+                    if (event.key.repeat || !pressed) {
                         break;
+                    }
                     ppu_palette_swap(gb.ppu);
                     break;
                 case BUTTON_TURBO:
-                    if (event.key.repeat || !pressed)
+                    if (event.key.repeat || !pressed) {
                         break;
+                    }
                     gb.turbo ^= 1;
                     break;
                 case BUTTON_PAUSE:
-                    if (event.key.repeat || !pressed)
+                    if (event.key.repeat || !pressed) {
                         break;
+                    }
                     gb.paused ^= 1;
+                    break;
+                case BUTTON_FULLSCREEN:
+                    if (event.key.repeat || !pressed) {
+                        break;
+                    }
+                    fullscreen ^= 1;
+                    if (SDL_SetWindowFullscreen(gb.ppu->window, fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) != 0) {
+                        printf("Warning: Failed to toggle fullscreen: %s\n", SDL_GetError());
+                        fullscreen ^= 1;
+                    }
+                    SDL_RenderSetIntegerScale(gb.ppu->renderer, SDL_TRUE);
+                    SDL_RenderSetLogicalSize(gb.ppu->renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
                     break;
                 }
             }
         }
-
-        // Emulate 1 frame
-        gb.cpu->frame_cycles = gb.paused ? 0 : CYCLES_PER_FRAME;
-        while (gb.cpu->frame_cycles > 0) {
-            cpu_step(gb.cpu, gb.mem);
-        }
-
-        // Update FPS counter
-        fps_frames++;
-        uint64_t now_counter = SDL_GetPerformanceCounter();
-        double fps_elapsed = (double)(now_counter - fps_timer) * perf_freq_inv;
-
-        if (fps_elapsed >= 1.0) {
-            fps = fps_frames / fps_elapsed;
-            snprintf(title, sizeof(title), "C-GB | %.2f FPS", fps);
-            SDL_SetWindowTitle(gb.ppu->window, title);
-
-            fps_frames = 0;
-            fps_timer = now_counter;
-        }
-
-        // Limit performance to ~59.7 FPS when not in turbo mode
-        double now = (double)(now_counter - start_counter) * perf_freq_inv;
-        if (!gb.turbo) {
-            if (now < next_frame_time) {
-                double delay = next_frame_time - now;
-                SDL_Delay((uint32_t)(delay * 1000.0));
+        
+        // Only run emulation if ROM is loaded
+        if (gb.rom_loaded) {
+            gb.cpu->frame_cycles = gb.paused ? 0 : CYCLES_PER_FRAME;
+            while (gb.cpu->frame_cycles > 0) {
+                cpu_step(gb.cpu, gb.mem);
             }
-            next_frame_time += FRAME_TIME;
-        } else {
-            next_frame_time = now;
+
+            // Update FPS counter
+            fps_frames++;
+            uint64_t now_counter = SDL_GetPerformanceCounter();
+            double fps_elapsed = (double)(now_counter - fps_timer) * perf_freq_inv;
+
+            if (fps_elapsed >= 1.0) {
+                fps = fps_frames / fps_elapsed;
+                snprintf(title, sizeof(title), "C-GB | %.2f FPS", fps);
+                SDL_SetWindowTitle(gb.ppu->window, title);
+
+                fps_frames = 0;
+                fps_timer = now_counter;
+            }
+
+            // Limit performance to ~59.7 FPS when not in turbo mode
+            double now = (double)(now_counter - start_counter) * perf_freq_inv;
+            if (!gb.turbo) {
+                if (now < next_frame_time) {
+                    double delay = next_frame_time - now;
+                    SDL_Delay((uint32_t)(delay * 1000.0));
+                }
+                next_frame_time += FRAME_TIME;
+            } else {
+                next_frame_time = now;
+            }
         }
     }
 

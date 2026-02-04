@@ -15,12 +15,19 @@ typedef struct GB {
     PPU *ppu;
     Memory *mem;
 
-    // Current state
+    // State
     uint8_t joypad_state;
     int turbo;
     int paused;
+    int rom_loaded;
 } GB;
 
+// Initialization
+
 Status GB_init(GB *gb, CPU *cpu, PPU *ppu, Memory *mem);
+
+// ROM loading
+
+Status GB_load_rom(GB *gb, const char *filepath);
 
 #endif

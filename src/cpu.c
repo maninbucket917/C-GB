@@ -9,6 +9,11 @@ cpu_init
 Set the CPU to post-BIOS state. Also assigns GB parent pointer of CPU.
 */
 Status cpu_init(CPU *cpu, GB *gb) {
+    if (gb == NULL) {
+        return ERR_NO_PARENT;
+    }
+
+    cpu->gb = gb;
 
     cpu->a = 0x01;
     cpu->f = 0xB0;
@@ -32,10 +37,6 @@ Status cpu_init(CPU *cpu, GB *gb) {
 
     cpu->frame_cycles = 0;
 
-    cpu->gb = gb;
-    if (cpu->gb == NULL)
-        return ERR_NO_PARENT;
-
     return OK;
 }
 
@@ -46,15 +47,17 @@ Check for and begin servicing interrupts if interrupt flags are set.
 */
 void cpu_handle_interrupts(CPU *cpu, Memory *mem) {
     // Interrupts only taken if IME is set
-    if (!cpu->ime)
+    if (!cpu->ime) {
         return;
+    }
 
     uint8_t IE = mem_read8(mem, 0xFFFF); // Interrupt Enable
     uint8_t IF = mem_read8(mem, 0xFF0F); // Interrupt Flag
     uint8_t pending = IE & IF;
 
-    if (!pending)
+    if (!pending) {
         return;
+    }
 
     // Interrupt acknowledge (atomic)
     cpu->ime = 0;
