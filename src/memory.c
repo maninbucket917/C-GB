@@ -47,8 +47,14 @@ Status mem_init(Memory *mem, GB *gb) {
         return ERR_NO_PARENT;
     }
 
-    // Clear memory to 0
-    memset(mem, 0, sizeof(Memory));
+    // Clear memory to 0, preserving ROM data
+    memset(mem->vram, 0, VRAM_SIZE);
+    memset(mem->eram, 0, ERAM_SIZE);
+    memset(mem->wram0, 0, WRAM_BANK_0_SIZE);
+    memset(mem->wram1, 0, WRAM_BANK_1_SIZE);
+    memset(mem->oam, 0, OAM_SIZE);
+    memset(mem->io, 0, IO_REGISTERS_SIZE);
+    memset(mem->hram, 0, HRAM_SIZE);
 
     mem->io[0x00] = 0xCF;
 
