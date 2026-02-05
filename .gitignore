@@ -1,6 +1,7 @@
 bin/
 obj/
 mooneye/
+releases/
 roms/
 tests/
 saves/
