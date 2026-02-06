@@ -51,7 +51,10 @@ int main(int argc, char *argv[]) {
 
     // Timing constants
     uint64_t perf_freq = SDL_GetPerformanceFrequency();
-    double perf_freq_inv = 1.0 / (double)perf_freq; // Precalculate inverse of perf_freq to avoid doing extra division per frame
+    double perf_freq_inv =
+        1.0 /
+        (double)
+            perf_freq; // Precalculate inverse of perf_freq to avoid doing extra division per frame
     uint64_t start_counter = SDL_GetPerformanceCounter();
     double next_frame_time = 0.0;
 
@@ -176,7 +179,7 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-        
+
         // Only run emulation if ROM is loaded
         if (gb.rom_loaded) {
             gb.cpu->frame_cycles = gb.paused ? 0 : CYCLES_PER_FRAME;

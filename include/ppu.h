@@ -2,6 +2,7 @@
 #define PPU_H
 
 #include <SDL2/SDL.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "config.h"
@@ -16,6 +17,9 @@ typedef struct PPU {
     uint16_t dot; // 0–455
     uint8_t ly;   // 0–153
     uint8_t mode; // 0 = HBlank, 1 = VBlank, 2 = OAM, 3 = VRAM
+
+    // STAT interrupt line state
+    bool stat_irq_line;
 
     // Window timing
     uint8_t window_line;
@@ -61,6 +65,7 @@ void ppu_reset(PPU *ppu);
 // Execution
 
 void ppu_step(PPU *ppu, Memory *mem, int cycles);
+void ppu_check_stat(PPU *ppu, Memory *mem);
 
 // Miscellaneous
 

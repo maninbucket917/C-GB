@@ -1,9 +1,21 @@
 # C-GB
 
-A Gameboy emulator project written in C, focused on high levels of accuracy.
+An instruction-accurate Game Boy (DMG) emulator written in C, focused on high levels of accuracy.
+
+## Features
+
+- **Cycle-accurate CPU** - Passes all Blargg CPU instruction and timing tests
+- **Accurate PPU** - Passes dmg-acid2; proper sprite priority, window behavior, and STAT timing
+- **6 color palettes** - Grayscale, DMG green, Pocket, Sepia, Light Blue, Virtual Boy (F2 to cycle)
+- **Turbo mode** - Press F3 to toggle fast-forward
+- **Fullscreen support** - Toggle with F11
+- **Drag-and-drop** - Load ROMs by dragging onto the window
+- **Cross-platform** - Runs on both Windows and Linux
+- **Compatible with all tested MBC0 (ROM only) Game Boy games**
+
 
 ***NOTE:***
-MBCs are not yet implemented, so only 32KB ROMs are supported at the moment.
+MBCs are not yet implemented, so only 32KB ROMs are supported at the moment. See [COMPATIBILITY.md](COMPATIBILITY.md) for a list of tested games.
 
 ## Controls
 
@@ -59,25 +71,21 @@ Alternatively, the Windows executable in the "Releases" tab can be run safely wi
 
 ## Test ROM results
 
-dmg-acid2: Passed
-
-<img width="482" height="433" alt="image" src="https://github.com/user-attachments/assets/175c0aed-4b37-400f-bcd1-cbe838598c96" />
-
-blargg CPU tests: Passed
-
-<img width="481" height="431" alt="image" src="https://github.com/user-attachments/assets/6b258c3b-bc70-47be-a0f4-de0cd8a0db5c" />
-<img width="479" height="429" alt="image" src="https://github.com/user-attachments/assets/a04dfc14-5922-4557-94f5-525e1e3acc5d" />
-<img width="479" height="429" alt="image" src="https://github.com/user-attachments/assets/96b43d67-a0ef-4d39-8cbd-9687c05df9df" />
-<img width="479" height="431" alt="image" src="https://github.com/user-attachments/assets/6c96f3f5-06d7-448a-bb50-fd48204ecb7b" />
-<img width="479" height="432" alt="image" src="https://github.com/user-attachments/assets/4aff8ed2-7bd8-4b33-afc6-fb02c95eda4c" />
-<img width="482" height="434" alt="image" src="https://github.com/user-attachments/assets/db11c22d-6722-4a07-aba1-45b123203751" />
-<img width="481" height="432" alt="image" src="https://github.com/user-attachments/assets/7e205dcd-b61d-46d9-aff3-f71cf38c83c5" />
-<img width="478" height="430" alt="image" src="https://github.com/user-attachments/assets/579c66f2-1d3b-49ad-b735-da28236461b7" />
-<img width="481" height="431" alt="image" src="https://github.com/user-attachments/assets/e8cb5f1c-a4f1-4940-9a20-1bb73cbd45f9" />
-<img width="479" height="433" alt="image" src="https://github.com/user-attachments/assets/ebe72cb1-943c-468c-ae6b-97b00d6bc2a0" />
-<img width="480" height="430" alt="image" src="https://github.com/user-attachments/assets/f88f5f22-54bc-4930-9a6b-c2d4f82762a0" />
+Test ROM results can be found in the main directory's test-results folder.
 
 ## Version History
+
+### V 0.35
+
+- Implemented full STAT line handling, fixing certain games being unplayable and minor screen effects in several others
+
+- Fixed mid-instruction timing to pass blargg's read_timing, write_timing, and modify_timing tests
+
+- Fixed EI delay to pass mooneye's rapid_di_ei test
+
+- Moved test ROM results screenshots to their own folder, test-results.
+
+- Total number of fully compatible games: 65 (All MBC0 games are now fully functional!)
 
 ### V 0.30
 
