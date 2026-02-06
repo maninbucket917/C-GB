@@ -16,17 +16,18 @@
 | Bouken! Puzzle Road | Japan | ✓ | |
 | Boxxle | USA | ✓ | |
 | Boxxle II | USA | ✓ | |
-| Brain Bender | USA | ✓ | Vertical stretch on title screen does not work |
+| Brain Bender | USA | ✓ | |
 | Bubble Ghost | USA, Europe | ✓ | |
 | Castelian | USA | ✓ | |
 | Catrap | USA | ✓ | |
+| Centipede | USA, Europe | ✓ | |
 | Chiki Chiki Tengoku | Japan | ✓ | |
 | Cool Ball | USA | ✓ | |
 | Crystal Quest | USA | ✓ | |
 | Daedalian Opus | USA | ✓ | |
 | Dr. Mario | World | ✓ | |
 | Dragon Slayer I | Japan | ✓ | |
-| Dropzone | Europe | ⚠ | Screen scrolling is glitched |
+| Dropzone | Europe | ✓ | |
 | Flappy Special | Japan | ✓ | |
 | Flipull | USA | ✓ | |
 | Game of Harmony, The | USA | ✓ | |
@@ -41,8 +42,10 @@
 | Kyoro-chan Land | Japan | ✓ | |
 | Loopz | World | ✓ | |
 | Master Karateka | Japan | ✓ | |
+| Migrain | Japan | ✓ | |
 | Minesweeper - Soukaitei | Japan | ✓ | |
 | Missile Command | USA, Europe | ✓ | |
+| Mogura de Pon! | Japan | ✓ | |
 | Motocross Maniacs | USA | ✓ | |
 | NFL Football | USA | ✓ | |
 | Othello | Europe | ✓ | |
@@ -56,10 +59,17 @@
 | Serpent | USA | ✓ | |
 | Shanghai | USA | ✓ | |
 | Shisenshou - Match-Mania | Japan | ✓ | |
+| Soukoban | Japan | ✓ | |
+| Soukoban II | Japan | ✓ | |
+| Space Invaders | Japan | ✓ | |
 | Spot | USA | ✓ | |
+| Taikyoku Renju | Japan | ✓ | |
+| Tasmania Monogatari | Japan | ✓ | |
+| Tasmania Story | USA | ✓ | |
 | Tennis | World | ✓ | |
 | Tesserae | USA | ✓ | |
 | Tetris | World | ✓ | |
+| Trump Boy | Japan | ✓ | |
 | Volley Fire | Japan | ✓ | Minor tearing at bottom of certain sprites |
 | World Bowling | USA | ✓ | |
 | Yakuman | Japan | ✓ | |

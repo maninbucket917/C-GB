@@ -5,14 +5,7 @@
 #include "memory.h"
 #include "ppu.h"
 
-const uint32_t palettes[NUM_PALETTES][4] = {
-    {PALETTE_0},
-    {PALETTE_1},
-    {PALETTE_2},
-    {PALETTE_3},
-    {PALETTE_4},
-    {PALETTE_5}
-};
+const uint32_t palettes[NUM_PALETTES][6] = {{PALETTE_0}, {PALETTE_1}, {PALETTE_2}, {PALETTE_3}, {PALETTE_4}, {PALETTE_5}};
 
 /*
 gb_palette
@@ -24,29 +17,51 @@ static inline uint32_t gb_palette(uint8_t palette_id, uint8_t colour) {
 }
 
 /*
-ppu_stat_lyc_check
+ppu_update_stat
 
-Update STAT coincidence flag and request STAT interrupt when LY equals LYC.
+Update STAT register and check for STAT interrupt conditions.
+The STAT interrupt line is active if ANY enabled condition is true.
+An interrupt is only requested on a rising edge.
 */
-static inline void ppu_stat_lyc_check(PPU *ppu, Memory *mem) {
-    uint8_t stat = mem_read8(mem, 0xFF41);
-    uint8_t lyc = mem_read8(mem, 0xFF45);
+static inline void ppu_update_stat(PPU *ppu, Memory *mem) {
+    uint8_t stat = mem->io[0x41];
+    uint8_t lyc = mem->io[0x45];
 
-    if (ppu->ly == lyc) {
-        // Set coincidence flag
+    // Update LYC coincidence flag
+    bool lyc_match = (ppu->ly == lyc);
+    if (lyc_match) {
         stat |= 0x04;
-        mem_write8(mem, 0xFF41, stat);
-
-        // If LYC interrupt enabled, request STAT interrupt
-        if (stat & 0x40) {
-            uint8_t IF = mem_read8(mem, 0xFF0F);
-            mem_write8(mem, 0xFF0F, IF | 0x02);
-        }
     } else {
-        // Clear coincidence flag
         stat &= ~0x04;
-        mem_write8(mem, 0xFF41, stat);
     }
+
+    // Update mode bits
+    stat = (stat & 0xFC) | (ppu->mode & 0x03);
+    mem->io[0x41] = stat | 0x80;
+
+    // Calculate if STAT interrupt line is high
+    // Each condition is checked against its enable bit
+    bool stat_line = false;
+
+    if ((stat & 0x40) && lyc_match) {
+        stat_line = true; // LYC=LY interrupt
+    }
+    if ((stat & 0x20) && ppu->mode == 2) {
+        stat_line = true; // Mode 2 (OAM) interrupt
+    }
+    if ((stat & 0x10) && ppu->mode == 1) {
+        stat_line = true; // Mode 1 (VBlank) interrupt
+    }
+    if ((stat & 0x08) && ppu->mode == 0) {
+        stat_line = true; // Mode 0 (HBlank) interrupt
+    }
+
+    // Request STAT interrupt on rising edge only
+    if (stat_line && !ppu->stat_irq_line) {
+        mem->io[0x0F] |= 0x02;
+    }
+
+    ppu->stat_irq_line = stat_line;
 }
 
 /*
@@ -54,8 +69,7 @@ ppu_read_tile_pixel
 
 Return the 2-bit colour for a background/window pixel at [x, y].
 */
-static inline uint8_t ppu_read_tile_pixel(Memory *mem, int tiledata_unsigned, uint16_t tilemap,
-                                          uint16_t x, uint16_t y) {
+static inline uint8_t ppu_read_tile_pixel(Memory *mem, int tiledata_unsigned, uint16_t tilemap, uint16_t x, uint16_t y) {
 
     // Get tile row and column
     uint16_t tile_row = y >> 3;
@@ -135,6 +149,8 @@ void ppu_reset(PPU *ppu) {
     ppu->dot = 0;
     ppu->ly = 0;
     ppu->mode = 2;
+
+    ppu->stat_irq_line = false;
 
     ppu->window_line = 0;
     ppu->window_drawn = 0;
@@ -319,13 +335,10 @@ static void ppu_draw_sprites(PPU *ppu, Memory *mem) {
 /*
 ppu_mode_change
 
-Update PPU mode and the STAT register low bits, then keep STAT flags consistent.
+Update PPU mode.
 */
-static inline void ppu_mode_change(PPU *ppu, Memory *mem, uint8_t mode) {
+static inline void ppu_mode_change(PPU *ppu, uint8_t mode) {
     ppu->mode = mode;
-    uint8_t stat = mem->io[0x41] & 0xF8;
-    stat |= (ppu->mode & 0x03);
-    mem->io[0x41] = stat | 0x80;
 }
 
 /*
@@ -338,13 +351,16 @@ void ppu_step(PPU *ppu, Memory *mem, int cycles) {
     // Emulate one cycle at a time
     while (cycles--) {
 
-        // If LCDC bit 7 is active, reset dot and ly, and set ppu mode to 0 (Hblank)
+        // If LCDC bit 7 is clear, PPU is disabled
         uint8_t lcdc = mem_read8(mem, 0xFF40);
         if (!(lcdc & 0x80)) {
             ppu->dot = 0;
             ppu->ly = 0;
-            mem_write8(mem, 0xFF44, 0);
-            ppu_mode_change(ppu, mem, 0);
+            ppu->mode = 0;
+            ppu->stat_irq_line = false;
+            mem->io[0x44] = 0;
+            // Update STAT mode bits but don't trigger interrupts when LCD is off
+            mem->io[0x41] = (mem->io[0x41] & 0xFC) | 0x80;
             continue;
         }
 
@@ -361,26 +377,25 @@ void ppu_step(PPU *ppu, Memory *mem, int cycles) {
                 ppu->dot = 0;
                 ppu->ly++;
                 mem->io[0x44] = ppu->ly;
-                ppu_stat_lyc_check(ppu, mem);
 
                 if (ppu->ly == 144) {
                     // Enter VBlank
-                    ppu_mode_change(ppu, mem, 1);
+                    ppu_mode_change(ppu, 1);
+                    ppu_update_stat(ppu, mem);
 
                     // Request VBlank interrupt
-                    uint8_t IF = mem_read8(mem, 0xFF0F);
-                    mem_write8(mem, 0xFF0F, IF | 0x01);
+                    mem->io[0x0F] |= 0x01;
 
                     // Present frame
-                    SDL_UpdateTexture(ppu->texture, NULL, ppu->framebuffer,
-                                      SCREEN_WIDTH * sizeof(uint32_t));
+                    SDL_UpdateTexture(ppu->texture, NULL, ppu->framebuffer, SCREEN_WIDTH * sizeof(uint32_t));
                     SDL_RenderClear(ppu->renderer);
                     SDL_RenderCopy(ppu->renderer, ppu->texture, NULL, NULL);
                     SDL_RenderPresent(ppu->renderer);
 
                 } else {
                     // Next scanline is OAM scan
-                    ppu_mode_change(ppu, mem, 2);
+                    ppu_mode_change(ppu, 2);
+                    ppu_update_stat(ppu, mem);
                 }
             }
 
@@ -393,16 +408,15 @@ void ppu_step(PPU *ppu, Memory *mem, int cycles) {
                 ppu->dot = 0;
                 ppu->ly++;
                 mem->io[0x44] = ppu->ly;
-                ppu_stat_lyc_check(ppu, mem);
 
                 // Reset LY and start OAM scan
                 if (ppu->ly > 153) {
                     ppu->ly = 0;
                     ppu->window_line = 0;
-                    ppu_stat_lyc_check(ppu, mem);
-                    ppu_mode_change(ppu, mem, 2);
-                    mem_write8(mem, 0xFF44, 0);
+                    mem->io[0x44] = 0;
+                    ppu_mode_change(ppu, 2);
                 }
+                ppu_update_stat(ppu, mem);
             }
             break;
 
@@ -410,7 +424,8 @@ void ppu_step(PPU *ppu, Memory *mem, int cycles) {
 
             // Change to drawing mode after 80 dots
             if (ppu->dot >= 80) {
-                ppu_mode_change(ppu, mem, 3);
+                ppu_mode_change(ppu, 3);
+                ppu_update_stat(ppu, mem);
             }
             break;
 
@@ -425,11 +440,24 @@ void ppu_step(PPU *ppu, Memory *mem, int cycles) {
                     ppu->window_line++;
                 }
                 ppu_draw_sprites(ppu, mem);
-                ppu_mode_change(ppu, mem, 0);
-                ppu_stat_lyc_check(ppu, mem);
+                ppu_mode_change(ppu, 0);
+                ppu_update_stat(ppu, mem);
             }
             break;
         }
+    }
+}
+
+/*
+ppu_check_stat
+
+Wrapper to evaluate STAT interrupt conditions.
+Called when LYC or STAT registers are written.
+*/
+void ppu_check_stat(PPU *ppu, Memory *mem) {
+    // Only check if LCD is enabled
+    if (mem->io[0x40] & 0x80) {
+        ppu_update_stat(ppu, mem);
     }
 }
 

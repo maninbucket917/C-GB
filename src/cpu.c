@@ -92,13 +92,14 @@ void cpu_handle_interrupts(CPU *cpu, Memory *mem) {
     }
 }
 
-// Set ime to 1 if ime_delay is 1.
+// Set ime to 1 if ime_delay reaches 1, decrement counter otherwise
 static inline void check_ei_delay(CPU *cpu) {
-    if (cpu->ime_delay) {
-        cpu->ime_delay = 0;
-        cpu->ime = 1;
+    if (cpu->ime_delay > 0) {
+        cpu->ime_delay--;
+        if (cpu->ime_delay == 0) {
+            cpu->ime = 1;
+        }
     }
-    return;
 }
 
 // Request a serial interrupt if start bit is set.
@@ -139,8 +140,6 @@ void cpu_step(CPU *cpu, Memory *mem) {
 
         if (!pending) {
             tick(cpu, 4);
-
-            // Check for EI delay
             check_ei_delay(cpu);
             return;
         }
@@ -164,9 +163,10 @@ void cpu_step(CPU *cpu, Memory *mem) {
     // Run instruction handler
     opcode_fn handler = opcode_table[(op == 0xCB) ? 0x100 + get_opcode(cpu, mem) : op];
     uint8_t instruction_cycles = handler(cpu, mem);
+
     tick(cpu, instruction_cycles);
 
-    // Check for EI delay
+    // Check EI delay after instruction completes
     check_ei_delay(cpu);
 
     // Check for serial transfer
@@ -189,9 +189,7 @@ void tick(CPU *cpu, int cycles) {
 Used for debugging
 */
 void print_cpu_state(CPU *cpu, Memory *mem) {
-    printf("A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X "
-           "PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
+    printf("A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
            cpu->a, cpu->f, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->pc,
-           mem_read8(mem, cpu->pc), mem_read8(mem, cpu->pc + 1), mem_read8(mem, cpu->pc + 2),
-           mem_read8(mem, cpu->pc + 3));
+           mem_read8(mem, cpu->pc), mem_read8(mem, cpu->pc + 1), mem_read8(mem, cpu->pc + 2), mem_read8(mem, cpu->pc + 3));
 }

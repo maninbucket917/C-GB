@@ -656,8 +656,9 @@ static inline uint8_t op_34(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
     uint8_t val = mem_read8(mem, addr);
     op_inc_r(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 12;
+    return 8;
 }
 
 // DEC (HL)
@@ -665,14 +666,17 @@ static inline uint8_t op_35(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
     uint8_t val = mem_read8(mem, addr);
     op_dec_r(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 12;
+    return 8;
 }
 
 // LD (HL), d8
 static inline uint8_t op_36(CPU *cpu, Memory *mem) {
-    mem_write8(mem, get_hl(cpu), get_imm8(cpu, mem));
-    return 12;
+    uint8_t value = get_imm8(cpu, mem);
+    tick(cpu, 4);
+    mem_write8(mem, get_hl(cpu), value);
+    return 8;
 }
 
 // SCF
@@ -1803,8 +1807,10 @@ static inline uint8_t op_DF(CPU *cpu, Memory *mem) {
 
 // LD (a8), A
 static inline uint8_t op_E0(CPU *cpu, Memory *mem) {
-    mem_write8(mem, 0xFF00 | get_imm8(cpu, mem), cpu->a);
-    return 12;
+    uint8_t offset = get_imm8(cpu, mem);
+    tick(cpu, 4);
+    mem_write8(mem, 0xFF00 | offset, cpu->a);
+    return 8;
 }
 
 // POP HL
@@ -1866,8 +1872,10 @@ static inline uint8_t op_E9(CPU *cpu, Memory *mem) {
 
 // LD (a16), A
 static inline uint8_t op_EA(CPU *cpu, Memory *mem) {
-    mem_write8(mem, get_imm16(cpu, mem), cpu->a);
-    return 16;
+    uint16_t addr = get_imm16(cpu, mem);
+    tick(cpu, 8);
+    mem_write8(mem, addr, cpu->a);
+    return 8;
 }
 
 // XOR d8
@@ -1965,7 +1973,7 @@ static inline uint8_t op_FA(CPU *cpu, Memory *mem) {
 // EI
 static inline uint8_t op_FB(CPU *cpu, Memory *mem) {
     (void)mem;
-    cpu->ime_delay = 1;
+    cpu->ime_delay = 2;
     return 4;
 }
 
@@ -2204,8 +2212,13 @@ static inline uint8_t cb_05(CPU *cpu, Memory *mem) {
 
 // RLC (HL)
 static inline uint8_t cb_06(CPU *cpu, Memory *mem) {
-    mem_write8(mem, get_hl(cpu), cb_rlc(cpu, mem_read8(mem, get_hl(cpu))));
-    return 16;
+    uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
+    uint8_t val = mem_read8(mem, addr);
+    val = cb_rlc(cpu, val);
+    tick(cpu, 4);
+    mem_write8(mem, addr, val);
+    return 8;
 }
 
 // RLC A
@@ -2259,8 +2272,13 @@ static inline uint8_t cb_0D(CPU *cpu, Memory *mem) {
 
 // RRC (HL)
 static inline uint8_t cb_0E(CPU *cpu, Memory *mem) {
-    mem_write8(mem, get_hl(cpu), cb_rrc(cpu, mem_read8(mem, get_hl(cpu))));
-    return 16;
+    uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
+    uint8_t val = mem_read8(mem, addr);
+    val = cb_rrc(cpu, val);
+    tick(cpu, 4);
+    mem_write8(mem, addr, val);
+    return 8;
 }
 
 // RRC A
@@ -2315,10 +2333,12 @@ static inline uint8_t cb_15(CPU *cpu, Memory *mem) {
 // RL (HL)
 static inline uint8_t cb_16(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_rl(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RL A
@@ -2373,10 +2393,12 @@ static inline uint8_t cb_1D(CPU *cpu, Memory *mem) {
 // RR (HL)
 static inline uint8_t cb_1E(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_rr(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RR A
@@ -2431,10 +2453,12 @@ static inline uint8_t cb_25(CPU *cpu, Memory *mem) {
 // SLA (HL)
 static inline uint8_t cb_26(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_sla(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SLA A
@@ -2489,10 +2513,12 @@ static inline uint8_t cb_2D(CPU *cpu, Memory *mem) {
 // SRA (HL)
 static inline uint8_t cb_2E(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_sra(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SRA A
@@ -2547,10 +2573,12 @@ static inline uint8_t cb_35(CPU *cpu, Memory *mem) {
 // SWAP (HL)
 static inline uint8_t cb_36(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_swap(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SWAP A
@@ -2605,10 +2633,12 @@ static inline uint8_t cb_3D(CPU *cpu, Memory *mem) {
 // SRL (HL)
 static inline uint8_t cb_3E(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_srl(cpu, &val);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SRL A
@@ -2662,9 +2692,10 @@ static inline uint8_t cb_45(CPU *cpu, Memory *mem) {
 
 // BIT 0, (HL)
 static inline uint8_t cb_46(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 0);
-    return 12;
+    return 8;
 }
 
 // BIT 0, A
@@ -2718,9 +2749,10 @@ static inline uint8_t cb_4D(CPU *cpu, Memory *mem) {
 
 // BIT 1, (HL)
 static inline uint8_t cb_4E(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 1);
-    return 12;
+    return 8;
 }
 
 // BIT 1, A
@@ -2774,9 +2806,10 @@ static inline uint8_t cb_55(CPU *cpu, Memory *mem) {
 
 // BIT 2, (HL)
 static inline uint8_t cb_56(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 2);
-    return 12;
+    return 8;
 }
 
 // BIT 2, A
@@ -2830,9 +2863,10 @@ static inline uint8_t cb_5D(CPU *cpu, Memory *mem) {
 
 // BIT 3, (HL)
 static inline uint8_t cb_5E(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 3);
-    return 12;
+    return 8;
 }
 
 // BIT 3, A
@@ -2886,9 +2920,10 @@ static inline uint8_t cb_65(CPU *cpu, Memory *mem) {
 
 // BIT 4, (HL)
 static inline uint8_t cb_66(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 4);
-    return 12;
+    return 8;
 }
 
 // BIT 4, A
@@ -2942,9 +2977,10 @@ static inline uint8_t cb_6D(CPU *cpu, Memory *mem) {
 
 // BIT 5, (HL)
 static inline uint8_t cb_6E(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 5);
-    return 12;
+    return 8;
 }
 
 // BIT 5, A
@@ -2998,9 +3034,10 @@ static inline uint8_t cb_75(CPU *cpu, Memory *mem) {
 
 // BIT 6, (HL)
 static inline uint8_t cb_76(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 6);
-    return 12;
+    return 8;
 }
 
 // BIT 6, A
@@ -3054,9 +3091,10 @@ static inline uint8_t cb_7D(CPU *cpu, Memory *mem) {
 
 // BIT 7, (HL)
 static inline uint8_t cb_7E(CPU *cpu, Memory *mem) {
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, get_hl(cpu));
     cb_bit(cpu, val, 7);
-    return 12;
+    return 8;
 }
 
 // BIT 7, A
@@ -3111,10 +3149,12 @@ static inline uint8_t cb_85(CPU *cpu, Memory *mem) {
 // RES 0, (HL)
 static inline uint8_t cb_86(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 0);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 0, A
@@ -3169,10 +3209,12 @@ static inline uint8_t cb_8D(CPU *cpu, Memory *mem) {
 // RES 1, (HL)
 static inline uint8_t cb_8E(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 1);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 1, A
@@ -3227,10 +3269,12 @@ static inline uint8_t cb_95(CPU *cpu, Memory *mem) {
 // RES 2, (HL)
 static inline uint8_t cb_96(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 2);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 2, A
@@ -3285,10 +3329,12 @@ static inline uint8_t cb_9D(CPU *cpu, Memory *mem) {
 // RES 3, (HL)
 static inline uint8_t cb_9E(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 3);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 3, A
@@ -3343,10 +3389,12 @@ static inline uint8_t cb_A5(CPU *cpu, Memory *mem) {
 // RES 4, (HL)
 static inline uint8_t cb_A6(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 4);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 4, A
@@ -3401,10 +3449,12 @@ static inline uint8_t cb_AD(CPU *cpu, Memory *mem) {
 // RES 5, (HL)
 static inline uint8_t cb_AE(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 5);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 5, A
@@ -3459,10 +3509,12 @@ static inline uint8_t cb_B5(CPU *cpu, Memory *mem) {
 // RES 6, (HL)
 static inline uint8_t cb_B6(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 6);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 6, A
@@ -3517,10 +3569,12 @@ static inline uint8_t cb_BD(CPU *cpu, Memory *mem) {
 // RES 7, (HL)
 static inline uint8_t cb_BE(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_res(&val, 7);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // RES 7, A
@@ -3575,10 +3629,12 @@ static inline uint8_t cb_C5(CPU *cpu, Memory *mem) {
 // SET 0, (HL)
 static inline uint8_t cb_C6(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 0);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 0, A
@@ -3633,10 +3689,12 @@ static inline uint8_t cb_CD(CPU *cpu, Memory *mem) {
 // SET 1, (HL)
 static inline uint8_t cb_CE(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 1);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 1, A
@@ -3691,10 +3749,12 @@ static inline uint8_t cb_D5(CPU *cpu, Memory *mem) {
 // SET 2, (HL)
 static inline uint8_t cb_D6(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 2);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 2, A
@@ -3749,10 +3809,12 @@ static inline uint8_t cb_DD(CPU *cpu, Memory *mem) {
 // SET 3, (HL)
 static inline uint8_t cb_DE(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 3);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 3, A
@@ -3807,10 +3869,12 @@ static inline uint8_t cb_E5(CPU *cpu, Memory *mem) {
 // SET 4, (HL)
 static inline uint8_t cb_E6(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 4);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 4, A
@@ -3865,10 +3929,12 @@ static inline uint8_t cb_ED(CPU *cpu, Memory *mem) {
 // SET 5, (HL)
 static inline uint8_t cb_EE(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 5);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 5, A
@@ -3923,10 +3989,12 @@ static inline uint8_t cb_F5(CPU *cpu, Memory *mem) {
 // SET 6, (HL)
 static inline uint8_t cb_F6(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 6);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 6, A
@@ -3981,10 +4049,12 @@ static inline uint8_t cb_FD(CPU *cpu, Memory *mem) {
 // SET 7, (HL)
 static inline uint8_t cb_FE(CPU *cpu, Memory *mem) {
     uint16_t addr = get_hl(cpu);
+    tick(cpu, 4);
     uint8_t val = mem_read8(mem, addr);
     cb_set(&val, 7);
+    tick(cpu, 4);
     mem_write8(mem, addr, val);
-    return 16;
+    return 8;
 }
 
 // SET 7, A

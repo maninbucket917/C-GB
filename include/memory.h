@@ -5,8 +5,10 @@
 
 #include "config.h"
 #include "gb.h"
+#include "ppu.h"
 
 typedef struct CPU CPU;
+typedef struct PPU PPU;
 
 typedef struct Memory {
     uint8_t rom0[ROM_BANK_0_SIZE];   // 0000–3FFF
@@ -170,7 +172,7 @@ static inline void mem_write8(Memory *mem, uint16_t addr, uint8_t value) {
         return;
     }
 
-    else if (addr < 0xFF80) { // VRAM
+    else if (addr < 0xFF80) { // IO registers
 
         // Only bits 4 and 5 are writable
         if (addr == 0xFF00) {
@@ -182,15 +184,31 @@ static inline void mem_write8(Memory *mem, uint16_t addr, uint8_t value) {
         if (addr == 0xFF04) {
             mem->div_internal = 0;
             mem->io[0x04] = 0;
+            return;
         }
 
         // Prevent writes to IF from clearing bits 5-7
         if (addr == 0xFF0F) {
             mem->io[0x0F] = 0xE0 | value;
+            return;
+        }
+
+        // STAT register - only bits 3-6 are writable, bit 7 always reads 1
+        if (addr == 0xFF41) {
+            mem->io[0x41] = (mem->io[0x41] & 0x07) | (value & 0x78) | 0x80;
+            ppu_check_stat(mem->gb->ppu, mem);
+            return;
         }
 
         // Block writes to LY
         if (addr == 0xFF44) {
+            return;
+        }
+
+        // LYC register - re-evaluate STAT interrupt
+        if (addr == 0xFF45) {
+            mem->io[0x45] = value;
+            ppu_check_stat(mem->gb->ppu, mem);
             return;
         }
 
