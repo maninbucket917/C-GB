@@ -13,3 +13,4 @@ windows-libs/
 *.GB
 *.sh
 .clang-format
+keybinds.cfg

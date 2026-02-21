@@ -5,24 +5,6 @@ This file declares constants used by the system.
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Input keys
-
-#define BUTTON_A SDLK_x
-#define BUTTON_B SDLK_z
-#define BUTTON_SELECT SDLK_RSHIFT
-#define BUTTON_START SDLK_RETURN
-
-#define BUTTON_RIGHT SDLK_RIGHT
-#define BUTTON_LEFT SDLK_LEFT
-#define BUTTON_UP SDLK_UP
-#define BUTTON_DOWN SDLK_DOWN
-
-#define BUTTON_RESET SDLK_F1
-#define BUTTON_PALETTE_SWAP SDLK_F2
-#define BUTTON_TURBO SDLK_F3
-#define BUTTON_PAUSE SDLK_F4
-#define BUTTON_FULLSCREEN SDLK_F11
-
 // Screen size
 
 #define SCREEN_WIDTH 160

@@ -33,13 +33,15 @@ Additional function keys:
 
 |Key   |Function    |
 |:----:|:----------:|
-|F1    |Reset       |
-|F2    |Palette swap|
-|F3    |Turbo mode  |
-|F4    |Toggle pause|
+|F1    |Open config menu|
+|F2    |Reset       |
+|F3    |Palette cycle|
+|F4    |Toggle turbo mode|
+|F5    |Toggle pause|
 |F11   |Toggle fullscreen|
 
-The keybinds and the default palettes may be changed in `/include/config.h`.
+The keybinds may be changed in the config menu (F1 by default).
+By default, keybind configurations are stored in `keybinds.cfg`.
 
 ## Compiling & Running
 
@@ -51,10 +53,13 @@ Double-click `C-GB.exe` to run the emulator, and drag a ROM file into the window
 
 ### Linux
 
+Building was tested and verified on Linux Mint 22.3 Zena, but should work on any reasonably modern Linux distribution with the necessary dependencies installed.
+
 Dependencies:
 - make
 - gcc
 - SDL2 development libraries (libsdl2-2.0-0 and libsdl2-dev)
+- SDL2 TTF development library (libsdl2-ttf-dev)
 
 To compile the source code, navigate to the root and run:  
 `make`
@@ -74,6 +79,12 @@ Alternatively, the Windows executable in the "Releases" tab can be run safely wi
 Test ROM results can be found in the main directory's test-results folder.
 
 ## Version History
+
+### V 0.40
+
+- Added keybind configuration menu
+
+- Fixed a bug where slow ROM reads could cause temporary timer desynchronization and speed up gameplay
 
 ### V 0.35
 

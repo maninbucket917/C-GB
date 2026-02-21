@@ -4,6 +4,7 @@
 #include "gb.h"
 #include "memory.h"
 #include "ppu.h"
+#include "keybinds.h"
 
 int main(int argc, char *argv[]) {
 
@@ -51,10 +52,7 @@ int main(int argc, char *argv[]) {
 
     // Timing constants
     uint64_t perf_freq = SDL_GetPerformanceFrequency();
-    double perf_freq_inv =
-        1.0 /
-        (double)
-            perf_freq; // Precalculate inverse of perf_freq to avoid doing extra division per frame
+    double perf_freq_inv = 1.0 / (double) perf_freq; // Precalculate inverse of perf_freq to avoid doing extra division per frame
     uint64_t start_counter = SDL_GetPerformanceCounter();
     double next_frame_time = 0.0;
 
@@ -63,6 +61,27 @@ int main(int argc, char *argv[]) {
     int fps_frames = 0;
     double fps = 0.0;
     char title[128];
+
+    // Keybinds for menu
+    Keybinds keybinds = {
+        .up = SDLK_UP,
+        .down = SDLK_DOWN,
+        .left = SDLK_LEFT,
+        .right = SDLK_RIGHT,
+        .a = SDLK_z,
+        .b = SDLK_x,
+        .start = SDLK_RETURN,
+        .select = SDLK_RSHIFT,
+        .keybinds_menu = SDLK_F1,
+        .reset = SDLK_F2,
+        .palette_swap = SDLK_F3,
+        .turbo = SDLK_F4,
+        .pause = SDLK_F5,
+        .fullscreen = SDLK_F11
+    };
+
+    // Attempt to read keybinds from file
+    load_keybinds(&keybinds);
 
     SDL_Event event;
     int running = 1;
@@ -96,75 +115,66 @@ int main(int argc, char *argv[]) {
             if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
                 int pressed = (event.type == SDL_KEYDOWN);
 
-                switch (event.key.keysym.sym) {
-
-                // D-pad
-                case BUTTON_RIGHT:
+                // Dynamic keybinds
+                if (event.key.keysym.sym == keybinds.right)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x01) : (gb.joypad_state | 0x01);
-                    break;
-                case BUTTON_LEFT:
+                if (event.key.keysym.sym == keybinds.left)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x02) : (gb.joypad_state | 0x02);
-                    break;
-                case BUTTON_UP:
+                if (event.key.keysym.sym == keybinds.up)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x04) : (gb.joypad_state | 0x04);
-                    break;
-                case BUTTON_DOWN:
+                if (event.key.keysym.sym == keybinds.down)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x08) : (gb.joypad_state | 0x08);
-                    break;
-
-                // Buttons
-                case BUTTON_A:
+                if (event.key.keysym.sym == keybinds.a)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x10) : (gb.joypad_state | 0x10);
-                    break;
-                case BUTTON_B:
+                if (event.key.keysym.sym == keybinds.b)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x20) : (gb.joypad_state | 0x20);
-                    break;
-                case BUTTON_SELECT:
+                if (event.key.keysym.sym == keybinds.select)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x40) : (gb.joypad_state | 0x40);
-                    break;
-                case BUTTON_START:
+                if (event.key.keysym.sym == keybinds.start)
                     gb.joypad_state = pressed ? (gb.joypad_state & ~0x80) : (gb.joypad_state | 0x80);
-                    break;
-
-                // Extra functions
-                case BUTTON_RESET:
-
+                if (event.key.keysym.sym == keybinds.keybinds_menu) {
                     if (event.key.repeat || !pressed) {
                         break;
                     }
+                    show_keybind_menu(&keybinds);
 
+                    // Resync timers after returning from menu to avoid large time jumps
+                    start_counter = SDL_GetPerformanceCounter();
+                    next_frame_time = 0.0;
+                    fps_timer = start_counter;
+                }
+                if (event.key.keysym.sym == keybinds.reset) {
+                    if (event.key.repeat || !pressed) {
+                        break;
+                    }
                     if (!gb.rom_loaded) {
                         printf("No ROM loaded to reset\n");
                         break;
                     }
-
-                    // Reset emulator state
                     cpu_init(gb.cpu, &gb);
                     mem_init(gb.mem, &gb);
                     ppu_reset(gb.ppu);
-
                     printf("Emulator reset\n");
-
-                    break;
-                case BUTTON_PALETTE_SWAP:
+                }
+                if (event.key.keysym.sym == keybinds.palette_swap) {
                     if (event.key.repeat || !pressed) {
                         break;
                     }
                     ppu_palette_swap(gb.ppu);
-                    break;
-                case BUTTON_TURBO:
+                }
+                if (event.key.keysym.sym == keybinds.turbo) {
                     if (event.key.repeat || !pressed) {
                         break;
                     }
                     gb.turbo ^= 1;
-                    break;
-                case BUTTON_PAUSE:
+                }
+                if (event.key.keysym.sym == keybinds.pause) {
                     if (event.key.repeat || !pressed) {
                         break;
                     }
                     gb.paused ^= 1;
-                    break;
-                case BUTTON_FULLSCREEN:
+                }
+                if (event.key.keysym.sym == keybinds.fullscreen) {
                     if (event.key.repeat || !pressed) {
                         break;
                     }
@@ -175,7 +185,6 @@ int main(int argc, char *argv[]) {
                     }
                     SDL_RenderSetIntegerScale(gb.ppu->renderer, SDL_TRUE);
                     SDL_RenderSetLogicalSize(gb.ppu->renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-                    break;
                 }
             }
         }
@@ -214,6 +223,9 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+
+    // Save keybinds to file on exit
+    save_keybinds(&keybinds);
 
     // Cleanup
     SDL_DestroyTexture(gb.ppu->texture);
