@@ -6,8 +6,11 @@ An instruction-accurate Game Boy (DMG) emulator written in C, focused on high le
 
 - **Cycle-accurate CPU** - Passes all Blargg CPU instruction and timing tests
 - **Accurate PPU** - Passes dmg-acid2; proper sprite priority, window behavior, and STAT timing
-- **6 color palettes** - Grayscale, DMG green, Pocket, Sepia, Light Blue, Virtual Boy (F2 to cycle)
-- **Turbo mode** - Press F3 to toggle fast-forward
+- **Controls Remapping** - Press F1 to remap controls
+- **Quick Reset** - Press F2 to quickly reload the currently loaded ROM
+- **6 color palettes** - Grayscale, DMG green, Pocket, Sepia, Light Blue, Virtual Boy (F3 to cycle)
+- **Turbo mode** - Press F4 to toggle fast-forward on and off
+- **Universal Pause** - Press F5 to toggle on and off
 - **Fullscreen support** - Toggle with F11
 - **Drag-and-drop** - Load ROMs by dragging onto the window
 - **Cross-platform** - Runs on both Windows and Linux
