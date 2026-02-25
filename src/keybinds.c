@@ -66,8 +66,12 @@ void show_keybind_menu(Keybinds *keybinds)
         return;
     }
 
-    TTF_Font *font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18);
+    // Try default system fonts, fallback to common ones if not found
+    TTF_Font *font = NULL;
+    if (!font) font = TTF_OpenFont("C:/Windows/Fonts/arial.ttf", 18);
+    if (!font) font = TTF_OpenFont("C:/Windows/Fonts/verdana.ttf", 18);
     if (!font) font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 18);
+    if (!font) font = TTF_OpenFont("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 18);
     if (!font) {
         TTF_Quit();
         SDL_DestroyRenderer(renderer);
